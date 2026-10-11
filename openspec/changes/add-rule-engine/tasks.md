@@ -96,12 +96,12 @@
 
 ## 13. HTTP endpoints (engine-observability, part 2)
 
-- [ ] 13.1 Implement `node:http` server with `/health/live` (incl. event-loop-lag check), `/health/ready` and `/rules` (including engine metadata such as the active watch mode from `HotReloader.mode`), plus `HTTP_PORT=0` disable; verify HTTP tests for each endpoint state
+- [x] 13.1 Implement `node:http` server with `/health/live` (incl. event-loop-lag check), `/health/ready` and `/rules` (including engine metadata such as the active watch mode from `HotReloader.mode`), plus `HTTP_PORT=0` disable; verify HTTP tests for each endpoint state
 - [ ] 13.2 Implement engine activity logging (connection transitions, load summary, debug trigger/service-call traces); verify log-capture tests for the startup summary and debug traces
 
 ## 14. Engine bootstrap and shutdown
 
-- [ ] 14.1 Wire the startup sequence (config → logger → deps install → connect → load rules → watcher → HTTP ready) in `packages/engine` CLI entry, including the fired-holds record (`<DATA_DIR>/fired-holds.json`: load before rules start, pass to the state trigger source, `pruneRules()` after the initial load, flush on shutdown); verify one end-to-end test booting core with the fake adapter (reports ready, loads a rule) and one against the HA mock server loading an example rule that turns on a light
+- [ ] 14.1 Wire the startup sequence (config → logger → deps install → connect → load rules → watcher → HTTP ready) in `packages/engine` CLI entry, including the fired-holds record (`<DATA_DIR>/fired-holds.json`: load before rules start, pass to the state trigger source, `pruneRules()` after the initial load, flush on shutdown), rule storage (`<DATA_DIR>/storage`: load before rules start, pass to `coreSdkRuntime`, flush on shutdown) and the HTTP server (`StatusSources.engine()` reporting the version and `HotReloader.mode`); verify one end-to-end test booting core with the fake adapter (reports ready, loads a rule) and one against the HA mock server loading an example rule that turns on a light
 - [ ] 14.2 Implement graceful shutdown on SIGTERM/SIGINT (stop triggers, teardowns, storage flush, close socket, 10 s hard limit naming the blocking rule); verify tests sending signals to a spawned engine process
 
 ## 15. Typings generator (rule-files)

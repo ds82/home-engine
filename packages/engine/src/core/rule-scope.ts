@@ -43,6 +43,8 @@ export class RuleScopeImpl implements RuleScope {
   readonly triggerErrors = new Map<string, { kind: string; message: string }>();
   /** Currently armed triggers (for next-run reporting). */
   readonly armedTriggers = new Set<{ kind: string; nextRun?: () => Date | undefined }>();
+  /** Pending timers (sleep, after, native setTimeout/setInterval), for the status endpoint. */
+  activeTimers = 0;
 
   constructor(
     readonly ruleId: string,
@@ -57,6 +59,17 @@ export class RuleScopeImpl implements RuleScope {
 
   get disposed(): boolean {
     return this.disposing !== undefined;
+  }
+
+  /** Counts a pending timer; the returned function (safe to call twice) uncounts it. */
+  trackTimer(): () => void {
+    this.activeTimers++;
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      this.activeTimers--;
+    };
   }
 
   /** A user teardown (SDK `onDispose()` or the function a setup function returns). */

@@ -39,14 +39,17 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
   const { clock, timeZone, onSiteChange } = options;
   function sleep(duration: Duration): Promise<void> {
     const ms = parseDuration(duration, "sleep() duration");
-    const { signal } = requireRun("sleep");
+    const { signal, scope } = requireRun("sleep");
     return new Promise<void>((resolve, reject) => {
       if (signal.aborted) return reject(signal.reason);
+      const untrack = scope.trackTimer();
       const onAbort = (): void => {
+        untrack();
         cancel();
         reject(signal.reason);
       };
       const cancel = clock.setTimeout(() => {
+        untrack();
         signal.removeEventListener("abort", onAbort);
         resolve();
       }, ms);
@@ -60,14 +63,17 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       throw new TypeError("after(): the callback must be a function");
     const { scope, signal } = requireRun("after");
     let nextRun: Date | undefined = new Date(clock.now() + ms);
+    const untrack = scope.trackTimer();
     const cancelTimer = clock.setTimeout(() => {
       nextRun = undefined;
+      untrack();
       signal.removeEventListener("abort", cancel);
       invoke(scope, "callback", () => callback());
     }, ms);
     function cancel(): void {
       if (!nextRun) return;
       nextRun = undefined;
+      untrack();
       cancelTimer();
       signal.removeEventListener("abort", cancel);
     }

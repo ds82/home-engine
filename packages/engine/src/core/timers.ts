@@ -30,8 +30,15 @@ function ownerScope(): RuleScope | undefined {
 function track(handle: Handle, clear: (h: Handle) => void): void {
   const scope = ownerScope();
   if (!scope) return;
-  const remove = scope.onDispose(() => clear(handle));
-  untrack.set(handle, remove);
+  const uncount = (scope as { trackTimer?: () => () => void }).trackTimer?.();
+  const remove = scope.onDispose(() => {
+    uncount?.();
+    clear(handle);
+  });
+  untrack.set(handle, () => {
+    uncount?.();
+    remove();
+  });
 }
 
 function release(handle: unknown): void {

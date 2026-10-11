@@ -27,6 +27,10 @@ export interface RuleInfo {
   nextRun: Date | undefined;
   /** Next run per armed time trigger. */
   nextRuns: Array<{ kind: string; nextRun: Date }>;
+  /** Armed triggers and listeners. */
+  activeTriggers: number;
+  /** Pending sleep/after/native timers. */
+  scheduledTimers: number;
 }
 
 export interface FileInfo {
@@ -166,6 +170,8 @@ export class RuleRegistry {
       lastRunAt: scope?.lastRunAt,
       lastError: (started?.error ?? scope?.lastError)?.message,
       triggerErrors: scope ? [...scope.triggerErrors.values()] : [],
+      activeTriggers: status === "running" ? (scope?.armedTriggers.size ?? 0) : 0,
+      scheduledTimers: status === "running" ? (scope?.activeTimers ?? 0) : 0,
       ...this.schedule(scope),
     };
   }
