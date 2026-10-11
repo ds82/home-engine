@@ -89,6 +89,9 @@ describe("file watching modes (WATCH_POLL)", () => {
 
   /** Saves a new version and resolves with the time until it was reloaded. */
   async function timeReload(r: HotReloader, name: string): Promise<number> {
+    // chokidar's polling takes its baseline stat of each file shortly after "ready"; a write
+    // landing before that (only plausible within milliseconds of startup) is never seen.
+    await sleep(100);
     const started = Date.now();
     const reloaded = new Promise<ReloadSummary>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error("not reloaded within 5 s")), 5_000);

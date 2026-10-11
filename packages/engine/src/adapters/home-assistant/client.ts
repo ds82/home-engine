@@ -7,6 +7,7 @@ import type { HomeAssistantConfig } from "./config.js";
 import { HaConnection, type ConnectionOptions } from "./connection.js";
 import type { HaSession } from "./session.js";
 import { StateCache } from "./state-cache.js";
+import { StateDispatcher } from "./state-triggers.js";
 import { SubscriptionRegistry } from "./subscriptions.js";
 
 export type ClientOptions = Omit<ConnectionOptions, "config" | "log">;
@@ -42,6 +43,8 @@ export class HaClient {
   readonly connection: HaConnection;
   readonly subscriptions: SubscriptionRegistry;
   readonly states: StateCache;
+  /** Routes state changes to armed state triggers. */
+  readonly dispatcher: StateDispatcher;
   private ready = false;
   private firstReady: { resolve: () => void; reject: (e: unknown) => void } | undefined;
   private readonly readyListeners = new Set<() => void>();
@@ -59,6 +62,7 @@ export class HaClient {
     this.connection = new HaConnection({ ...options, config, log });
     this.subscriptions = new SubscriptionRegistry(log);
     this.states = new StateCache(this.subscriptions, log);
+    this.dispatcher = new StateDispatcher(this.states);
     this.connection.onSession((session) => void this.initialise(session));
     this.connection.onDisconnect(() => this.setReady(false));
     // Location or time zone edited in Home Assistant: refresh the Site.
@@ -131,6 +135,7 @@ export class HaClient {
   async stop(): Promise<void> {
     await this.connection.stop();
     this.setReady(false);
+    this.dispatcher.dispose();
     this.states.dispose();
     this.statusListeners.clear();
     this.siteListeners.clear();
