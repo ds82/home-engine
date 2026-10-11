@@ -12,7 +12,7 @@ export function sleep(): Promise<void> {
  * Runs `callback` once after `duration`. The returned handle cancels it; it is also cancelled
  * when the run is aborted or the rule is unloaded.
  */
-export function after(duration: Duration, callback: () => void | Promise<void>): TimerHandle;
+export function after(duration: Duration, callback: () => unknown): TimerHandle;
 export function after(): TimerHandle {
   return notInEngine("after");
 }

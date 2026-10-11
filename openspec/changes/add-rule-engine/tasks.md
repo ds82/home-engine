@@ -118,7 +118,7 @@
 
 ## 17. Getting-started guide
 
-- [ ] 17.1 Write the top-level `README.md` quick start (compose, token creation, first rule, trusted-code warning) plus openHAB-to-home-engine (incl. `@ds82/openhab` → SDK mapping: `addRule`, `changeStateTrigger`, `timeTrigger`, `setTimeout` patterns, `sumSince`…) and AppDaemon-to-home-engine cheat sheets linking the per-area docs; verify code samples compile via the docs type-check script
+- [x] 17.1 Write the top-level `README.md` quick start (compose, token creation, first rule, trusted-code warning) plus openHAB-to-home-engine (incl. `@ds82/openhab` → SDK mapping: `addRule`, `changeStateTrigger`, `timeTrigger`, `setTimeout` patterns, `sumSince`…) and AppDaemon-to-home-engine cheat sheets linking the per-area docs; verify code samples compile via the docs type-check script
 
 ## 18. Integration verification
 

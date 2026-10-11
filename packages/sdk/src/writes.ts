@@ -98,8 +98,8 @@ export const ws: {
 /** Connection status and notifications. Callbacks are released when the rule is unloaded. */
 export const connection: {
   isConnected(): boolean;
-  onConnect(callback: () => void | Promise<void>): Handle;
-  onDisconnect(callback: () => void | Promise<void>): Handle;
+  onConnect(callback: () => unknown): Handle;
+  onDisconnect(callback: () => unknown): Handle;
 } = {
   isConnected: () => notInEngine("connection.isConnected"),
   onConnect: () => notInEngine("connection.onConnect"),

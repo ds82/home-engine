@@ -25,8 +25,11 @@ export interface RuleOptions extends CommonRuleOptions {
 /** Setup rules have no concurrency mode: their listeners always run in parallel. */
 export type SetupOptions = CommonRuleOptions;
 
-/** What a rule body may return. */
-export type RuleResult = void | Promise<void>;
+/**
+ * What a rule body may return: nothing, or a promise of anything (e.g.
+ * `() => call("light.turn_on")`). The value is ignored; only a rejection counts as a failed run.
+ */
+export type RuleResult = unknown;
 
 /** Called when a setup rule is unloaded. */
 export type Teardown = () => void | Promise<void>;
