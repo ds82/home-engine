@@ -113,7 +113,7 @@
 
 - [x] 16.1 Write the multi-stage Dockerfile (slim LTS base, tini entrypoint, non-root `node` user, `/data` volume, OCI labels incl. `licenses=MIT`, `/rules` mount point, node-based HEALTHCHECK, typegen included, so that `docker run --rm -e HA_URL -e HA_TOKEN <image> typegen` prints the typings as documented in `docs/rules/typings.md`); verify `docker build` succeeds and `docker run --user 1234` starts with writable mounts
 - [x] 16.2 Verify read-only `/rules` mount with a `package.json`, unwritable `/data` failure message, and `docker stop` graceful exit code 0 via a container smoke-test script run in CI
-- [ ] 16.3 Add buildx multi-arch (amd64, arm64) release workflow publishing semver tags + `latest`, with a compressed-size budget check (< 150 MB); verify a dry-run workflow build produces both platform manifests
+- [x] 16.3 Add buildx multi-arch (amd64, arm64) release workflow publishing semver tags + `latest`, with a compressed-size budget check (< 150 MB); verify a dry-run workflow build produces both platform manifests
 - [ ] 16.4 Add `docker-compose.yml` example and `examples/rules` (motion light with `for`, sunset cover with `sun`, factory-generated rules, setup counter with storage, history-based average); verify the quick-start scenario manually against a real or containerised Home Assistant and record the result
 
 ## 17. Getting-started guide

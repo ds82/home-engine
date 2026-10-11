@@ -1,0 +1,84 @@
+name: Release image
+
+# Tags vX.Y.Z build and push the multi-arch image (linux/amd64, linux/arm64) as X.Y.Z, X.Y, X
+# and latest; pre-releases (vX.Y.Z-rc.1) only as their own version. Branch pushes that touch
+# the image build it as a dry run (both platforms, size budget), pushing nothing.
+#
+# The image goes to this Forgejo instance's registry unless the repository variable IMAGE
+# names another one (e.g. ghcr.io/home-engine/home-engine); the secret REGISTRY_TOKEN, else
+# PACKAGES_READ_WRITE, is used to log in.
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - "**"
+    paths:
+      - "docker/**"
+      - "scripts/build-image.sh"
+      - ".forgejo/workflows/release.yml"
+  workflow_dispatch:
+
+jobs:
+  image:
+    runs-on: docker
+    container:
+      image: docker:27-cli
+    services:
+      dind:
+        image: docker:27-dind
+        env:
+          DOCKER_TLS_CERTDIR: ""
+        options: --privileged
+    steps:
+      - name: Checkout
+        run: |
+          apk add --no-cache git jq
+          SERVER=$(echo "${{ github.server_url }}" | sed 's|https\?://||')
+          git clone --depth 1 --branch "${{ github.ref_name }}" \
+            "https://x-token:${{ secrets.GITHUB_TOKEN }}@$SERVER/${{ github.repository }}.git" .
+
+      - name: Wait for Docker daemon
+        run: until docker info >/dev/null 2>&1; do sleep 1; done
+
+      - name: Dry run (both platforms, size budget)
+        if: github.ref_type != 'tag'
+        run: sh scripts/build-image.sh --dry-run
+
+      - name: Compute image and tags
+        if: github.ref_type == 'tag'
+        id: meta
+        run: |
+          SERVER=$(echo "${{ github.server_url }}" | sed 's|^https\?://||')
+          IMAGE="${{ vars.IMAGE }}"
+          [ -n "$IMAGE" ] || IMAGE="$SERVER/${{ github.repository }}"
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          case "$VERSION" in
+            *-*) TAGS="$VERSION" ;;
+            *)
+              MINOR="${VERSION%.*}"
+              MAJOR="${VERSION%%.*}"
+              TAGS="$VERSION $MINOR $MAJOR latest"
+              ;;
+          esac
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "registry=${IMAGE%%/*}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: Log in to registry
+        if: github.ref_type == 'tag'
+        run: |
+          TOKEN="${{ secrets.REGISTRY_TOKEN }}"
+          [ -n "$TOKEN" ] || TOKEN="${{ secrets.PACKAGES_READ_WRITE }}"
+          echo "$TOKEN" | docker login "${{ steps.meta.outputs.registry }}" \
+            --username "${{ github.actor }}" --password-stdin
+
+      - name: Build, push and check the size budget
+        if: github.ref_type == 'tag'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: sh scripts/build-image.sh --push "${{ steps.meta.outputs.image }}" ${{ steps.meta.outputs.tags }}

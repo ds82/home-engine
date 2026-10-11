@@ -202,7 +202,7 @@ Three GET routes, no framework. Liveness also checks event-loop lag (via `perf_h
 - `HEALTHCHECK CMD node /app/healthcheck.js` (no curl in the image).
 - `VOLUME ["/data"]`. `/rules` is expected to be bind-mounted.
 - The `typegen` CLI is included, so it can run as `docker run --rm -e HA_URL -e HA_TOKEN image typegen > ha-types.d.ts`.
-- Buildx for `linux/amd64,linux/arm64`, published to GHCR on tags. A CI step checks the compressed size budget.
+- Buildx for `linux/amd64,linux/arm64`, cross-built without emulation (all `RUN` steps on the build platform; production dependencies installed for the target CPU with `npm ci --cpu`, static tini). Published on tags to the repository's registry (the Forgejo registry today; GHCR via the `IMAGE` repository variable). The release script checks both platform manifests and the compressed size budget.
 
 ### D12: Typed entities via module augmentation
 
