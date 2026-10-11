@@ -86,6 +86,8 @@ export interface MockHomeAssistantOptions {
   config?: Partial<HaConfig>;
   /** Clock used for timestamps. Default: `Date.now`. */
   now?: () => number;
+  /** Interface to listen on; default 127.0.0.1 (0.0.0.0 to serve other containers). */
+  host?: string;
 }
 
 interface Subscription {
@@ -151,12 +153,14 @@ export class MockHomeAssistant {
   private readonly connections = new Set<MockConnection>();
   private readonly connectionWaiters: Array<(conn: MockConnection) => void> = [];
 
+  private readonly host: string;
   private http: Server | undefined;
   private wss: WebSocketServer | undefined;
   private listenPort = 0;
 
   constructor(options: MockHomeAssistantOptions = {}) {
     this.tokens = new Set(options.tokens ?? ["test-token"]);
+    this.host = options.host ?? "127.0.0.1";
     this.version = options.version ?? "2026.10.0";
     this.userId = options.userId ?? "engine-user-id";
     this.now = options.now ?? Date.now;
@@ -184,7 +188,7 @@ export class MockHomeAssistant {
     wss.on("connection", (socket) => this.onConnection(socket));
     await new Promise<void>((resolve, reject) => {
       http.once("error", reject);
-      http.listen(port, "127.0.0.1", () => resolve());
+      http.listen(port, this.host, () => resolve());
     });
     this.listenPort = (http.address() as AddressInfo).port;
     this.http = http;
