@@ -128,3 +128,12 @@ function toSyntaxError(err: unknown): RuleSyntaxError | undefined {
   }
   return undefined;
 }
+
+/** Logs the result of the initial load, e.g. "12 loaded, 1 disabled, 1 failed". */
+export function logLoadSummary(registry: RuleRegistry, log: Logger): void {
+  const { loaded, disabled, failed } = registry.summary();
+  log.info(
+    { loaded, disabled, failed },
+    `Rules: ${loaded} loaded, ${disabled} disabled, ${failed} failed`,
+  );
+}

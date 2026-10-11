@@ -78,6 +78,7 @@ async function startTriggeredRule(
 
   const fire = (trigger: Trigger, payload: EventPayload): void => {
     if (scope.disposed) return;
+    traceFiring(scope, trigger, payload);
     controller.submit(() =>
       invoke(scope, "body", (signal) =>
         definition.body({ ...payload, trigger, signal } as RuleEvent),
@@ -171,6 +172,7 @@ export function listen(
 
   const fire = (trigger: Trigger, payload: EventPayload): void => {
     if (scope.disposed || cancelled) return;
+    traceFiring(scope, trigger, payload, "listener");
     invoke(scope, "listener", (signal) => callback({ ...payload, trigger, signal } as RuleEvent));
   };
   let cancelled = false;
@@ -199,6 +201,24 @@ export function listen(
       return cancelled ? undefined : earliest(armedOfListener.map((a) => a.nextRun?.()));
     },
   };
+}
+
+/** Debug trace of a firing (engine-observability: Engine activity logging). */
+function traceFiring(
+  scope: RuleScopeImpl,
+  trigger: Trigger,
+  payload: EventPayload,
+  target: "rule" | "listener" = "rule",
+): void {
+  if (!scope.log.isLevelEnabled("debug")) return;
+  const fields = payload as Record<string, unknown>;
+  const entityId = typeof fields.entityId === "string" ? fields.entityId : undefined;
+  const eventType = typeof fields.eventType === "string" ? fields.eventType : undefined;
+  const subject = entityId ?? eventType;
+  scope.log.debug(
+    { trigger: trigger.kind, event: payload.type, entityId, eventType, firing: target },
+    `${trigger.kind} trigger fired${subject ? ` (${subject})` : ""}`,
+  );
 }
 
 /**

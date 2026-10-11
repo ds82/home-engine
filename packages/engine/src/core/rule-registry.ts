@@ -138,6 +138,17 @@ export class RuleRegistry {
     return [...this.rules.values()].flat().map((entry) => this.info(entry));
   }
 
+  /** Rules running, disabled and failed; a file that failed to load counts as one failure. */
+  summary(): { loaded: number; disabled: number; failed: number } {
+    const counts = { loaded: 0, disabled: 0, failed: 0 };
+    for (const rule of this.listRules()) {
+      if (rule.status === "running") counts.loaded++;
+      else counts[rule.status]++;
+    }
+    for (const file of this.files.values()) if (file.status === "failed") counts.failed++;
+    return counts;
+  }
+
   listFiles(): FileInfo[] {
     return [...this.files.values()];
   }
