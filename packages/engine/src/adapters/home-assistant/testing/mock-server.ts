@@ -8,21 +8,9 @@ import { randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
+import type { HaContext, HaState } from "../types.js";
 
-export interface HaContext {
-  id: string;
-  parent_id: string | null;
-  user_id: string | null;
-}
-
-export interface HaState {
-  entity_id: string;
-  state: string;
-  attributes: Record<string, unknown>;
-  last_changed: string;
-  last_updated: string;
-  context: HaContext;
-}
+export type { HaContext, HaState } from "../types.js";
 
 export interface HaConfig {
   version: string;
