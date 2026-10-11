@@ -1,6 +1,6 @@
 // Writes to Home Assistant. They may be awaited; if not, a failure is logged for the rule.
 
-import type { ServiceData, ServiceName, ServiceTarget } from "./entities.js";
+import type { EntityId, ServiceData, ServiceName, ServiceTarget } from "./entities.js";
 import { notInEngine } from "./stub.js";
 
 export interface CallOptions {
@@ -21,4 +21,46 @@ export function call<S extends ServiceName>(
 ): Promise<unknown>;
 export function call(): Promise<unknown> {
   return notInEngine("call");
+}
+
+/** Turns an entity on unless it already is (then nothing is sent). */
+export function on(entity: EntityId, data?: Record<string, unknown>): Promise<void>;
+export function on(): Promise<void> {
+  return notInEngine("on");
+}
+
+/** Turns an entity off unless it already is (then nothing is sent). */
+export function off(entity: EntityId, data?: Record<string, unknown>): Promise<void>;
+export function off(): Promise<void> {
+  return notInEngine("off");
+}
+
+/** Always sends turn_on, e.g. to change attributes of a light that is already on. */
+export function forceOn(entity: EntityId, data?: Record<string, unknown>): Promise<void>;
+export function forceOn(): Promise<void> {
+  return notInEngine("forceOn");
+}
+
+/** Always sends turn_off. */
+export function forceOff(entity: EntityId, data?: Record<string, unknown>): Promise<void>;
+export function forceOff(): Promise<void> {
+  return notInEngine("forceOff");
+}
+
+/** Toggles an entity. */
+export function toggle(entity: EntityId): Promise<void>;
+export function toggle(): Promise<void> {
+  return notInEngine("toggle");
+}
+
+/** Opens a cover to `position` (default 100 = open) unless it is already at least that open. */
+export function up(cover: EntityId, position?: number): Promise<void>;
+export function up(): Promise<void> {
+  return notInEngine("up");
+}
+
+/** Closes a cover to `position` (default 0 = closed) unless it is already at most that open. */
+export function down(cover: EntityId, position?: number): Promise<void>;
+export function down(): Promise<void> {
+  return notInEngine("down");
 }

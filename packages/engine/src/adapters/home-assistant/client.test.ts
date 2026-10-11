@@ -160,8 +160,8 @@ describe("HaClient state cache", () => {
     await restart(() => {});
     const types = ha.received.slice(from).map((m) => m.type);
     const lastSubscribe = types.lastIndexOf("subscribe_events");
-    // state_changed and core_config_updated (client) plus zha_event (test).
-    expect(types.filter((t) => t === "subscribe_events")).toHaveLength(3);
+    // state_changed, service_registered/removed and core_config_updated (client), zha_event (test).
+    expect(types.filter((t) => t === "subscribe_events")).toHaveLength(5);
     expect(lastSubscribe).toBeLessThan(types.indexOf("get_states"));
   });
 

@@ -51,6 +51,22 @@ export interface Writes {
     target?: ServiceTarget,
     options?: CallOptions,
   ): Promise<unknown>;
+  on(entity: string, data?: Record<string, unknown>): Promise<void>;
+  off(entity: string, data?: Record<string, unknown>): Promise<void>;
+  forceOn(entity: string, data?: Record<string, unknown>): Promise<void>;
+  forceOff(entity: string, data?: Record<string, unknown>): Promise<void>;
+  toggle(entity: string): Promise<void>;
+  up(cover: string, position?: number): Promise<void>;
+  down(cover: string, position?: number): Promise<void>;
+}
+
+const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
+
+function checkEntity(fn: string, entity: unknown): string {
+  if (typeof entity !== "string" || !ENTITY_ID.test(entity)) {
+    throw new TypeError(`${fn}(): ${JSON.stringify(entity)} is not an entity ID`);
+  }
+  return entity;
 }
 
 export function createWrites(client: HaClient, log: Logger): Writes {
@@ -98,7 +114,55 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     return trackWrite(promise, description);
   }
 
-  return { call };
+  /** The domain's own service, or homeassistant.* when Home Assistant reports the domain lacks it. */
+  const serviceFor = (entity: string, service: "turn_on" | "turn_off" | "toggle"): string => {
+    const domain = entity.split(".")[0] ?? "";
+    return client.hasService(domain, service) === false
+      ? `homeassistant.${service}`
+      : `${domain}.${service}`;
+  };
+
+  const switchTo =
+    (fn: string, target: "on" | "off", force: boolean) =>
+    async (entity: string, data: Record<string, unknown> = {}): Promise<void> => {
+      checkEntity(fn, entity);
+      if (!force && client.states.get(entity)?.state === target) {
+        caller().log.debug({ entity }, `${fn}(${entity}) skipped: already ${target}`);
+        return;
+      }
+      await call(serviceFor(entity, target === "on" ? "turn_on" : "turn_off"), data, {
+        entity_id: entity,
+      });
+    };
+
+  const position =
+    (fn: "up" | "down", defaultPosition: number) =>
+    async (cover: string, target = defaultPosition): Promise<void> => {
+      checkEntity(fn, cover);
+      if (!Number.isFinite(target) || target < 0 || target > 100) {
+        throw new TypeError(`${fn}(): position must be between 0 (closed) and 100 (open)`);
+      }
+      const current = client.states.get(cover)?.attributes.current_position;
+      if (typeof current === "number" && (fn === "up" ? current >= target : current <= target)) {
+        caller().log.debug({ cover, current, target }, `${fn}(${cover}) skipped: at ${current}`);
+        return;
+      }
+      await call("cover.set_cover_position", { position: target }, { entity_id: cover });
+    };
+
+  return {
+    call,
+    on: switchTo("on", "on", false),
+    off: switchTo("off", "off", false),
+    forceOn: switchTo("forceOn", "on", true),
+    forceOff: switchTo("forceOff", "off", true),
+    toggle: async (entity) => {
+      checkEntity("toggle", entity);
+      await call(serviceFor(entity, "toggle"), {}, { entity_id: entity });
+    },
+    up: position("up", 100),
+    down: position("down", 0),
+  };
 }
 
 /** Home Assistant's own message, without the session's "<command> failed:" prefix. */

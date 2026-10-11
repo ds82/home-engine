@@ -61,7 +61,7 @@ describe("HaClient status and Site", () => {
     });
     expect(client.status()).toEqual({
       connected: true,
-      details: { haVersion: "2026.10.2", userId: "user-123", entities: 0, subscriptions: 2 },
+      details: { haVersion: "2026.10.2", userId: "user-123", entities: 0, subscriptions: 4 },
     });
   });
 

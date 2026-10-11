@@ -420,6 +420,14 @@ export class MockHomeAssistant {
   private registerBuiltinCommands(): void {
     this.onCommand("get_states", () => ({ result: this.getStates() }));
     this.onCommand("get_config", () => ({ result: this.config }));
+    this.onCommand("get_services", () => {
+      const result: Record<string, Record<string, { name: string; fields: object }>> = {};
+      for (const key of this.services.keys()) {
+        const [domain = "", service = ""] = key.split(".");
+        (result[domain] ??= {})[service] = { name: service, fields: {} };
+      }
+      return { result };
+    });
     this.onCommand("auth/current_user", () => ({
       result: { id: this.userId, name: "home-engine", is_owner: false, is_admin: true },
     }));

@@ -54,6 +54,7 @@ export class HaClient {
   private readonly statusListeners = new Set<(connected: boolean) => void>();
   private readonly siteListeners = new Set<() => void>();
   private coreConfig: HaCoreConfig | undefined;
+  private serviceIndex: Map<string, Set<string>> | undefined;
   private user: HaUser | undefined;
   private currentSite: SiteInfo | undefined;
 
@@ -70,6 +71,17 @@ export class HaClient {
     this.connection.onSession((session) => void this.initialise(session));
     this.connection.onDisconnect(() => this.setReady(false));
     // Location or time zone edited in Home Assistant: refresh the Site.
+    // Integrations loaded or unloaded: refresh the known services.
+    for (const eventType of ["service_registered", "service_removed"]) {
+      this.subscriptions.onEvent(eventType, () => {
+        const session = this.connection.current;
+        if (session) {
+          void this.loadServices(session).catch((err: unknown) =>
+            this.log.warn({ err }, "Reloading the Home Assistant services failed"),
+          );
+        }
+      });
+    }
     this.subscriptions.onEvent("core_config_updated", () => {
       const session = this.connection.current;
       if (session)
@@ -151,6 +163,7 @@ export class HaClient {
       await Promise.all([
         this.states.sync(session),
         this.loadConfig(session),
+        this.loadServices(session),
         session.command<HaUser>({ type: "auth/current_user" }).then((user) => {
           this.user = user;
         }),
@@ -165,6 +178,25 @@ export class HaClient {
     this.firstReady?.resolve();
     this.firstReady = undefined;
     for (const listener of [...this.readyListeners]) listener();
+  }
+
+  /** Services by domain from the latest get_services; undefined before the first connect. */
+  get services(): ReadonlyMap<string, ReadonlySet<string>> | undefined {
+    return this.serviceIndex;
+  }
+
+  /** True when Home Assistant offers `domain.service` (unknown before the first connect). */
+  hasService(domain: string, service: string): boolean | undefined {
+    return this.serviceIndex ? (this.serviceIndex.get(domain)?.has(service) ?? false) : undefined;
+  }
+
+  private async loadServices(session: HaSession): Promise<void> {
+    const result = await session.command<Record<string, Record<string, unknown>>>({
+      type: "get_services",
+    });
+    this.serviceIndex = new Map(
+      Object.entries(result).map(([domain, services]) => [domain, new Set(Object.keys(services))]),
+    );
   }
 
   private async loadConfig(session: HaSession): Promise<void> {
