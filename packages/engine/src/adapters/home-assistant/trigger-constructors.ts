@@ -90,8 +90,7 @@ export function onEvent(eventType: unknown, dataFilter?: unknown): EventTrigger 
     kind: "event",
     eventType,
   };
-  if (dataFilter !== undefined)
-    descriptor.dataFilter = copyPlain(dataFilter as EventDataFilter);
+  if (dataFilter !== undefined) descriptor.dataFilter = copyPlain(dataFilter as EventDataFilter);
   return deepFreeze(descriptor);
 }
 
@@ -138,9 +137,7 @@ function copyArrays<T extends object>(options: T): T {
 function copyPlain<T>(value: T): T {
   if (Array.isArray(value)) return value.map(copyPlain) as T;
   if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, copyPlain(v)]),
-    ) as T;
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, copyPlain(v)])) as T;
   }
   return value;
 }
