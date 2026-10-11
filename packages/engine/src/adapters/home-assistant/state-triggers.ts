@@ -9,6 +9,7 @@ import type { Disposable } from "../../core/adapter.js";
 import { parseDuration } from "../../core/duration.js";
 import type { FiredHolds } from "../../core/fired-holds.js";
 import type { ArmContext, EventPayload, TriggerSource } from "../../core/trigger-source.js";
+import type { WriteAttribution } from "./attribution.js";
 import { deepEqual, type StateCache, type StateChange } from "./state-cache.js";
 import type { HaState } from "./types.js";
 
@@ -32,8 +33,14 @@ export class StateDispatcher {
   private readonly globs = new Map<string, { regex: RegExp; listeners: Set<Listener> }>();
   private readonly subscription: Disposable;
 
-  constructor(cache: StateCache) {
-    this.subscription = cache.onChange((change) => this.dispatch(change));
+  /** Changes waiting behind a held one, per entity, so order per entity is kept. */
+  private readonly queues = new Map<string, StateChange[]>();
+
+  constructor(
+    cache: StateCache,
+    private readonly attribution?: WriteAttribution,
+  ) {
+    this.subscription = cache.onChange((change) => this.receive(change));
   }
 
   /** Calls `listener` for changes of entities matching any of `selectors`. */
@@ -70,6 +77,30 @@ export class StateDispatcher {
     this.subscription.dispose();
     this.exact.clear();
     this.globs.clear();
+  }
+
+  /** Resolves the change's cause (possibly held briefly), then dispatches in order. */
+  private receive(change: StateChange): void {
+    const queue = this.queues.get(change.entityId);
+    if (queue) {
+      queue.push(change);
+      return;
+    }
+    const cause =
+      change.resynced || !this.attribution
+        ? ({ causedBy: "external" } as const)
+        : this.attribution.resolve(change.context);
+    if (!(cause instanceof Promise)) {
+      this.dispatch({ ...change, cause });
+      return;
+    }
+    const waiting: StateChange[] = [];
+    this.queues.set(change.entityId, waiting);
+    void cause.then((resolved) => {
+      this.queues.delete(change.entityId);
+      this.dispatch({ ...change, cause: resolved });
+      for (const next of waiting) this.receive(next);
+    });
   }
 
   private dispatch(change: StateChange): void {
@@ -212,7 +243,7 @@ class ArmedStateTrigger {
     if (verdict.kind === "ignore") return;
     const cause = change.resynced
       ? { causedBy: "external" as const }
-      : (this.options.causeOf ?? externalCause)(change);
+      : (change.cause ?? (this.options.causeOf ?? externalCause)(change));
 
     if (this.durationMs === undefined) {
       if (verdict.kind === "match") {

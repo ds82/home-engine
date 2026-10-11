@@ -19,6 +19,8 @@ export interface StateChange {
   resynced: boolean;
   /** Context of the `state_changed` event (undefined for resynced changes). */
   context: HaEvent["context"] | undefined;
+  /** Who caused it; set by the dispatcher before triggers see the change. */
+  cause?: { causedBy: "engine" | "external"; causedByRule?: string };
 }
 
 export type StateChangeListener = (change: StateChange) => void;
