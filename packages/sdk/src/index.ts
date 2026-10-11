@@ -35,6 +35,7 @@ export type {
   TimerHandle,
 } from "./rules.js";
 export { listen, rule, setup } from "./rules.js";
+export { after, randomInt, sleep } from "./timing.js";
 export { waitFor, type WaitFilter, type WaitOptions } from "./wait-for.js";
 export {
   cron,

@@ -9,7 +9,7 @@ import { listen, startRule, type StartedRule } from "../../core/rule-runner.js";
 import { logCapture, TOKEN } from "../../core/testing/log-capture.js";
 import { HaClient } from "./client.js";
 import { stateTriggerSource } from "./state-triggers.js";
-import { FakeClock } from "./testing/fake-clock.js";
+import { FakeClock } from "../../core/testing/fake-clock.js";
 import { FakeDelay } from "./testing/fake-delay.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 import { onChange } from "./trigger-constructors.js";

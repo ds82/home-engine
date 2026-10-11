@@ -1,13 +1,13 @@
 // A manually advanced clock for hold tests: timers fire only when the test advances time.
 
-import type { HoldClock } from "../state-triggers.js";
+import type { Clock } from "../timer.js";
 
 interface Timer {
   at: number;
   fn: () => void;
 }
 
-export class FakeClock implements HoldClock {
+export class FakeClock implements Clock {
   private readonly timers = new Set<Timer>();
 
   constructor(private current = Date.parse("2026-10-11T12:00:00.000Z")) {}

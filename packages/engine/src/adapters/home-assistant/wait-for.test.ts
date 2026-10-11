@@ -3,7 +3,7 @@ import { RuleScopeImpl } from "../../core/rule-scope.js";
 import { invoke } from "../../core/run-context.js";
 import { logCapture, TOKEN } from "../../core/testing/log-capture.js";
 import { HaClient } from "./client.js";
-import { FakeClock } from "./testing/fake-clock.js";
+import { FakeClock } from "../../core/testing/fake-clock.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 import type { HaState } from "./types.js";
 import { createWaitFor, type WaitFor } from "./wait-for.js";

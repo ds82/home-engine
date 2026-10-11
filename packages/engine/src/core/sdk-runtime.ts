@@ -4,19 +4,24 @@
 
 import { registerSetupRule, registerTriggeredRule } from "./registration.js";
 import { listen } from "./rule-runner.js";
-import { onStartup } from "./trigger-constructors.js";
+import type { Scheduling } from "./scheduling.js";
+import { every, onStartup } from "./trigger-constructors.js";
 
 export const SDK_RUNTIME_KEY = Symbol.for("home-engine.sdk");
 
 export type SdkRuntime = Record<string, unknown>;
 
 /** The core's SDK functions; adapters extend this object with their own. */
-export function coreSdkRuntime(): SdkRuntime {
+export function coreSdkRuntime(scheduling?: Scheduling): SdkRuntime {
   return {
     rule: registerTriggeredRule,
     setup: registerSetupRule,
     listen,
     onStartup,
+    every,
+    ...(scheduling
+      ? { sleep: scheduling.sleep, after: scheduling.after, randomInt: scheduling.randomInt }
+      : {}),
   };
 }
 
