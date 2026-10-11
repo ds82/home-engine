@@ -80,7 +80,7 @@
 - [x] 10.4 Implement `fire` and the raw WebSocket escape hatch; verify mock-server tests
 - [x] 10.5 Implement REST `setState` (incl. Supervisor base URL), virtual-entity tracking per rule and republish after reconnect; verify tests with a mock REST endpoint
 - [x] 10.6 Implement dry-run interception for calls, events and state writes with rule attribution; verify a test asserting no outgoing message and a `[dry-run] <rule-id> <service>` info log
-- [ ] 10.7 Document state helpers, `on` vs `forceOn`, `up`/`down` (incl. HA position semantics vs. openHAB), virtual-entity limitations (incl. the `onStartup` + `store` pattern for values at boot) and dry-run in `docs/rules/actions.md`; verify code samples compile via the docs type-check script
+- [x] 10.7 Document state helpers, `on` vs `forceOn`, `up`/`down` (incl. HA position semantics vs. openHAB), virtual-entity limitations (incl. the `onStartup` + `store` pattern for values at boot) and dry-run in `docs/rules/actions.md`; verify code samples compile via the docs type-check script
 
 ## 11. History (ha-history)
 
@@ -92,7 +92,7 @@
 ## 12. Storage (rule-storage)
 
 - [ ] 12.1 Implement per-rule and shared key/value stores with JSON-serialisability checks, debounced atomic flush (tmp + fsync + rename), flush on shutdown and corrupted-file quarantine; verify unit tests for isolation, persistence across a simulated restart, reload survival and corruption handling
-- [ ] 12.2 Document storage in `docs/rules/storage.md`; verify code samples compile via the docs type-check script
+- [ ] 12.2 Document storage in `docs/rules/storage.md`; verify code samples compile via the docs type-check script (also remove the `nocheck` from the `onStartup` + `store` sample in `docs/rules/actions.md`)
 
 ## 13. HTTP endpoints (engine-observability, part 2)
 
