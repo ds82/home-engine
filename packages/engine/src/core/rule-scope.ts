@@ -39,6 +39,8 @@ export class RuleScopeImpl implements RuleScope {
   lastRunAt: Date | undefined;
   /** Last error of a body, setup function or callback. */
   lastError: Error | undefined;
+  /** Triggers the backend rejected, by trigger identity. */
+  readonly triggerErrors = new Map<string, { kind: string; message: string }>();
 
   constructor(
     readonly ruleId: string,

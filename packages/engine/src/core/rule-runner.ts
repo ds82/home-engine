@@ -215,11 +215,20 @@ function arm(
     }
     const source = sources[trigger.kind];
     if (!source) throw new Error(`No trigger source for "${trigger.kind}" triggers`);
+    const identity = triggerIdentity(how.position(index), trigger);
     const armed = source(trigger, {
       scope,
-      identity: triggerIdentity(how.position(index), trigger),
+      identity,
       restoreHolds: how.restoreHolds,
       fire: (payload) => fire(trigger, payload),
+      reportError: (error) => {
+        scope.recordError(error);
+        scope.triggerErrors.set(identity, { kind: trigger.kind, message: error.message });
+        scope.log.error(
+          { err: error, trigger: trigger.kind },
+          `Trigger rejected: ${error.message}`,
+        );
+      },
     });
     scope.onDispose(() => armed.dispose());
     how.collect?.push(armed);

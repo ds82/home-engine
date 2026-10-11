@@ -21,6 +21,8 @@ export interface RuleInfo {
   lastRunAt: Date | undefined;
   /** Last error of a failed start, a body or a callback. */
   lastError: string | undefined;
+  /** Triggers the backend rejected; the rule keeps running without them. */
+  triggerErrors: Array<{ kind: string; message: string }>;
 }
 
 export interface FileInfo {
@@ -159,6 +161,7 @@ export class RuleRegistry {
       loadedAt: entry.loadedAt,
       lastRunAt: scope?.lastRunAt,
       lastError: (started?.error ?? scope?.lastError)?.message,
+      triggerErrors: scope ? [...scope.triggerErrors.values()] : [],
     };
   }
 

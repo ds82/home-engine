@@ -22,6 +22,12 @@ export interface ArmContext {
   restoreHolds: boolean;
   /** Reports one firing of the trigger. */
   fire(payload: EventPayload): void;
+  /**
+   * Reports that the backend rejected this trigger (e.g. an invalid native trigger config).
+   * The rule keeps running; the error is logged, recorded as the rule's last error and
+   * shown on this trigger in the status output.
+   */
+  reportError(error: Error): void;
 }
 
 /** Arms `trigger`; the returned disposable disarms it. */
