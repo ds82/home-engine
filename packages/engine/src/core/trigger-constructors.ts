@@ -1,7 +1,14 @@
 // Core trigger constructors. Like all constructors they only build a frozen descriptor;
 // the engine arms it when the rule starts.
 
-import type { EveryTrigger, StartupTrigger } from "@home-engine/sdk";
+import type {
+  CronTrigger,
+  DailyTrigger,
+  EveryTrigger,
+  StartupTrigger,
+  Weekday,
+} from "@home-engine/sdk";
+import { Cron } from "croner";
 import { parseDuration } from "./duration.js";
 
 /** SDK `onStartup()`: fires once each time the rule starts. */
@@ -49,4 +56,54 @@ export function every(interval: unknown, options: unknown = {}): EveryTrigger {
   if (o.alignTo !== undefined) trigger.alignTo = o.alignTo as string;
   if (o.immediate !== undefined) trigger.immediate = o.immediate as boolean;
   return Object.freeze(trigger);
+}
+
+const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+/** SDK `cron(expression)`: a 5-field or 6-field (with seconds) cron expression. */
+export function cron(expression: unknown): CronTrigger {
+  if (typeof expression !== "string" || expression.trim() === "") {
+    throw new TypeError("cron(): the expression must be a non-empty string");
+  }
+  const fields = expression.trim().split(/\s+/).length;
+  if (fields !== 5 && fields !== 6) {
+    throw new TypeError(`cron(): "${expression}" has ${fields} fields; use 5 (or 6 with seconds)`);
+  }
+  try {
+    new Cron(expression, { paused: true });
+  } catch (err) {
+    throw new TypeError(`cron(): invalid expression "${expression}": ${(err as Error).message}`, {
+      cause: err,
+    });
+  }
+  return Object.freeze({ kind: "cron", expression });
+}
+
+/** SDK `daily(time, options?)`: every day at a local time, optionally on some weekdays. */
+export function daily(time: unknown, options: unknown = {}): DailyTrigger {
+  parseLocalTime(time, "daily()");
+  if (options === null || typeof options !== "object")
+    throw new TypeError("daily(): options must be an object");
+  const o = options as { weekdays?: unknown };
+  for (const key of Object.keys(o)) {
+    if (key !== "weekdays") throw new TypeError(`daily(): unknown option "${key}"`);
+  }
+  if (o.weekdays === undefined) return Object.freeze({ kind: "daily", time: time as string });
+  if (
+    !Array.isArray(o.weekdays) ||
+    o.weekdays.length === 0 ||
+    !o.weekdays.every((d) => (WEEKDAYS as readonly unknown[]).includes(d))
+  ) {
+    throw new TypeError(`daily(): weekdays must be a non-empty list of ${WEEKDAYS.join(", ")}`);
+  }
+  return Object.freeze({
+    kind: "daily",
+    time: time as string,
+    weekdays: Object.freeze([...new Set(o.weekdays as Weekday[])]),
+  });
+}
+
+/** Weekday names → cron day-of-week numbers (0 = Sunday). */
+export function weekdayNumbers(weekdays: readonly Weekday[]): number[] {
+  return weekdays.map((d) => WEEKDAYS.indexOf(d)).sort((a, b) => a - b);
 }
