@@ -87,7 +87,7 @@
 - [x] 11.1 Implement time-argument parsing (Date, ISO, duration-ago) and `history`, `stateAt`, `lastChangedTo` on `history/history_during_period`; verify mock-server tests for the switch-history, historic-state and arrival-time scenarios
 - [x] 11.2 Implement time-weighted `averageSince`, `minimumSince`, `maximumSince` with exclusion of non-numeric states and statistics fallback for ranges older than retained history; verify the 10/20 → 12.5 scenario, the all-unavailable scenario and the retention-fallback scenario
 - [x] 11.3 Implement `changeSince` and `statistics` on `recorder/statistics_during_period`, plus recorder-missing errors and once-per-entity warnings for unrecorded entities; verify mock-server tests
-- [ ] 11.4 Document history queries in `docs/rules/history.md`; verify code samples compile via the docs type-check script
+- [x] 11.4 Document history queries in `docs/rules/history.md`; verify code samples compile via the docs type-check script
 
 ## 12. Storage (rule-storage)
 
