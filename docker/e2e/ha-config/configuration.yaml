@@ -1,0 +1,16 @@
+# Home Assistant for the end-to-end test (scripts/e2e-ha.sh).
+default_config:
+
+homeassistant:
+  name: home-engine e2e
+  time_zone: Europe/Berlin
+  latitude: 52.52
+  longitude: 13.405
+  elevation: 34
+  unit_system: metric
+
+input_boolean:
+  e2e_trigger:
+    name: E2E trigger
+  e2e_target:
+    name: E2E target

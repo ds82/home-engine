@@ -48,6 +48,15 @@ describe("logger", () => {
     expect(entry?.time).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
   });
 
+  it("writes the source key exactly once, for rule and engine lines", () => {
+    const { log, text } = setup();
+    ruleLogger(log, "lights#porch").info("from the rule");
+    log.info("from the engine");
+    for (const line of text().trimEnd().split("\n")) {
+      expect(line.match(/"source":/g)).toHaveLength(1);
+    }
+  });
+
   it("tags engine messages with source engine", () => {
     const { log, lines } = setup();
     log.info("connected");

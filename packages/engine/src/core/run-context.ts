@@ -14,6 +14,14 @@ export interface RunContext {
 
 const storage = new AsyncLocalStorage<RunContext>();
 
+/**
+ * Runs `fn` as code of `scope` outside a run (e.g. a teardown while unloading), so SDK
+ * functions such as `log` attribute it to the rule.
+ */
+export function runInScope<T>(scope: RuleScopeImpl, fn: () => T): T {
+  return storage.run({ scope, signal: scope.signal }, fn);
+}
+
 /** The context of the calling rule code, if any. */
 export function currentRun(): RunContext | undefined {
   return storage.getStore();

@@ -62,3 +62,27 @@ jobs:
 
       - name: Container smoke test
         run: sh scripts/container-smoke.sh
+
+  e2e:
+    runs-on: docker
+    container:
+      image: docker:27-cli
+    services:
+      dind:
+        image: docker:27-dind
+        env:
+          DOCKER_TLS_CERTDIR: ""
+        options: --privileged
+    steps:
+      - name: Checkout
+        run: |
+          apk add --no-cache git
+          SERVER=$(echo "${{ github.server_url }}" | sed 's|https\?://||')
+          git clone --depth 1 --branch "${{ github.ref_name }}" \
+            "https://x-token:${{ secrets.GITHUB_TOKEN }}@$SERVER/${{ github.repository }}.git" .
+
+      - name: Wait for Docker daemon
+        run: until docker info >/dev/null 2>&1; do sleep 1; done
+
+      - name: End-to-end test against Home Assistant
+        run: sh scripts/e2e-ha.sh

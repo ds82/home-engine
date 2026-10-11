@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Onboards a fresh Home Assistant (owner user, core config, analytics, integration step) and
 // prints a long-lived access token on stdout. For tests against a containerised instance:
-//   node scripts/ha-onboard.mjs http://127.0.0.1:8123
+//   node scripts/ha-onboard.mjs http://127.0.0.1:8123   (or HA_URL=… node scripts/ha-onboard.mjs)
 // Waits up to 5 minutes for Home Assistant to come up.
 
-const base = (process.argv[2] ?? "http://127.0.0.1:8123").replace(/\/+$/, "");
+const base = (process.argv[2] ?? process.env.HA_URL ?? "http://127.0.0.1:8123").replace(/\/+$/, "");
 const clientId = `${base}/`;
 const user = { name: "home-engine", username: "home-engine", password: "home-engine-test" };
 

@@ -48,7 +48,11 @@ export function createLogger(options: LoggerOptions): Logger {
   return pino(
     {
       level: options.level,
-      base: { source: ENGINE_SOURCE },
+      // No pid/hostname. Lines get `source: "engine"` unless a child logger (a rule's) has its
+      // own source; a base binding would put a second `source` key into those lines.
+      base: null,
+      mixin: (_object, _level, logger) =>
+        "source" in logger.bindings() ? {} : { source: ENGINE_SOURCE },
       messageKey: "message",
       timestamp: stdTimeFunctions.isoTime,
       formatters: { level: (label) => ({ level: label }) },

@@ -10,6 +10,16 @@ function scope(id = "lights#porch") {
 }
 
 describe("RuleScope cleanup", () => {
+  it("runs user teardowns as code of the rule, so SDK calls in them are attributed to it", async () => {
+    const { scope: s } = scope("climate#heating");
+    let ruleId: string | undefined;
+    s.addTeardown(() => {
+      ruleId = currentRun()?.scope.ruleId;
+    });
+    await s.dispose();
+    expect(ruleId).toBe("climate#heating");
+  });
+
   it("runs user teardowns (newest first), then aborts, then disposers (newest first)", async () => {
     const { scope: s } = scope();
     const order: string[] = [];

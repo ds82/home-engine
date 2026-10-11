@@ -5,6 +5,7 @@
 // a throwing teardown is logged and the rest still runs.
 
 import type { Logger } from "./logger.js";
+import { runInScope } from "./run-context.js";
 
 export interface RuleScope {
   readonly ruleId: string;
@@ -118,7 +119,8 @@ export class RuleScopeImpl implements RuleScope {
 
   private async runSafely(fn: Cleanup, what: "teardown" | "cleanup"): Promise<void> {
     try {
-      await fn();
+      // User teardowns run as the rule's code, so `log` in them is attributed to the rule.
+      await (what === "teardown" ? runInScope(this, fn) : fn());
     } catch (err) {
       this.recordError(err);
       this.log.error({ err }, what === "teardown" ? "Teardown failed" : "Cleanup failed");

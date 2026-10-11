@@ -122,5 +122,5 @@
 
 ## 18. Integration verification
 
-- [ ] 18.1 Run the full end-to-end suite against a containerised Home Assistant (`ghcr.io/home-assistant/home-assistant` with onboarding automated, token created) covering connect, HA restart/reconnect, state trigger, service call, hot reload and shutdown; verify all pass in CI
+- [x] 18.1 Run the full end-to-end suite against a containerised Home Assistant (`ghcr.io/home-assistant/home-assistant` with onboarding automated, token created) covering connect, HA restart/reconnect, state trigger, service call, hot reload and shutdown; verify all pass in CI
 - [ ] 18.2 Run a load test with 5k entities and 100 state changes/s against the mock server with 50 rules; verify event-processing latency p99 < 50 ms and record results in `docs/performance.md`
