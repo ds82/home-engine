@@ -5,7 +5,7 @@
 import { registerSetupRule, registerTriggeredRule } from "./registration.js";
 import { listen } from "./rule-runner.js";
 import type { Scheduling } from "./scheduling.js";
-import { cron, daily, every, onStartup } from "./trigger-constructors.js";
+import { cron, daily, every, onStartup, sun } from "./trigger-constructors.js";
 
 export const SDK_RUNTIME_KEY = Symbol.for("home-engine.sdk");
 
@@ -21,8 +21,14 @@ export function coreSdkRuntime(scheduling?: Scheduling): SdkRuntime {
     every,
     daily,
     cron,
+    sun,
     ...(scheduling
-      ? { sleep: scheduling.sleep, after: scheduling.after, randomInt: scheduling.randomInt }
+      ? {
+          sleep: scheduling.sleep,
+          after: scheduling.after,
+          randomInt: scheduling.randomInt,
+          ...scheduling.sun,
+        }
       : {}),
   };
 }

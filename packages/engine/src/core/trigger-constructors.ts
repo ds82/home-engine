@@ -6,10 +6,13 @@ import type {
   DailyTrigger,
   EveryTrigger,
   StartupTrigger,
+  SunEventName,
+  SunTrigger,
   Weekday,
 } from "@home-engine/sdk";
 import { Cron } from "croner";
 import { parseDuration } from "./duration.js";
+import { parseOffset } from "./sun.js";
 
 /** SDK `onStartup()`: fires once each time the rule starts. */
 export function onStartup(...args: unknown[]): StartupTrigger {
@@ -106,4 +109,26 @@ export function daily(time: unknown, options: unknown = {}): DailyTrigger {
 /** Weekday names → cron day-of-week numbers (0 = Sunday). */
 export function weekdayNumbers(weekdays: readonly Weekday[]): number[] {
   return weekdays.map((d) => WEEKDAYS.indexOf(d)).sort((a, b) => a - b);
+}
+
+const SUN_EVENTS: readonly SunEventName[] = ["sunrise", "sunset", "dawn", "dusk"];
+
+/** SDK `sun(event, { offset })`: daily at sunrise, sunset, dawn or dusk, optionally offset. */
+export function sun(event: unknown, options: unknown = {}): SunTrigger {
+  if (!(SUN_EVENTS as readonly unknown[]).includes(event)) {
+    throw new TypeError(`sun(): event must be one of ${SUN_EVENTS.join(", ")}`);
+  }
+  if (options === null || typeof options !== "object")
+    throw new TypeError("sun(): options must be an object");
+  const o = options as { offset?: unknown };
+  for (const key of Object.keys(o)) {
+    if (key !== "offset") throw new TypeError(`sun(): unknown option "${key}"`);
+  }
+  if (o.offset === undefined) return Object.freeze({ kind: "sun", event: event as SunEventName });
+  parseOffset(o.offset);
+  return Object.freeze({
+    kind: "sun",
+    event: event as SunEventName,
+    offset: o.offset as number | string,
+  });
 }

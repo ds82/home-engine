@@ -7,6 +7,8 @@ import type { Duration, TimerHandle, Weekday } from "@home-engine/sdk";
 import { Cron } from "croner";
 import { parseDuration } from "./duration.js";
 import { requireRun, invoke } from "./run-context.js";
+import type { Logger } from "./logger.js";
+import { createSun, type Location, type SunHelpers } from "./sun.js";
 import type { Clock } from "./timer.js";
 import { parseLocalTime, weekdayNumbers } from "./trigger-constructors.js";
 import type { TriggerSource, TriggerSources } from "./trigger-source.js";
@@ -17,6 +19,9 @@ export interface SchedulingOptions {
   timeZone: () => string | undefined;
   /** Called when the Site changes (e.g. its time zone); armed schedules are recomputed. */
   onSiteChange?: (listener: () => void) => () => void;
+  /** The Site's coordinates for sun events; undefined until the backend reported them. */
+  location?: () => Location | undefined;
+  log?: Logger;
 }
 
 export interface Scheduling {
@@ -25,11 +30,13 @@ export interface Scheduling {
   randomInt(min: number, max: number): number;
   /** Trigger source for `every`. */
   everySource: TriggerSource;
-  /** Trigger sources for all time triggers (`every`, `daily`, `cron`). */
+  /** Trigger sources for all time triggers (`every`, `daily`, `cron`, `sun`). */
   sources: TriggerSources;
+  sun: SunHelpers;
 }
 
-export function createScheduling({ clock, timeZone, onSiteChange }: SchedulingOptions): Scheduling {
+export function createScheduling(options: SchedulingOptions): Scheduling {
+  const { clock, timeZone, onSiteChange } = options;
   function sleep(duration: Duration): Promise<void> {
     const ms = parseDuration(duration, "sleep() duration");
     const { signal } = requireRun("sleep");
@@ -150,12 +157,20 @@ export function createScheduling({ clock, timeZone, onSiteChange }: SchedulingOp
     };
   };
 
+  const sun = createSun({
+    clock,
+    timeZone,
+    location: options.location ?? (() => undefined),
+    ...(onSiteChange ? { onSiteChange } : {}),
+    ...(options.log ? { log: options.log } : {}),
+  });
   const sources: TriggerSources = {
     every: everySource,
     daily: calendarSource,
     cron: calendarSource,
+    sun: sun.source,
   };
-  return { sleep, after, randomInt, everySource, sources };
+  return { sleep, after, randomInt, everySource, sources, sun: sun.helpers };
 }
 
 function tzOption(timeZone: string | undefined): { timezone?: string } {
