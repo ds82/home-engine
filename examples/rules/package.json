@@ -1,0 +1,12 @@
+{
+  "name": "home-engine-example-rules",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@home-engine/sdk": "0.0.0"
+  }
+}
