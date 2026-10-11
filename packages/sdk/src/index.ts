@@ -26,6 +26,7 @@ export type {
 export type {
   ConcurrencyMode,
   Handle,
+  ListenerHandle,
   ListenOptions,
   RuleOptions,
   RuleResult,

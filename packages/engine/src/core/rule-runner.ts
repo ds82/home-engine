@@ -4,7 +4,7 @@
 // parallel. Startup triggers fire once right after the rule has started.
 
 import type {
-  Handle,
+  ListenerHandle,
   ListenOptions,
   RuleEvent,
   RuleResult,
@@ -157,7 +157,7 @@ export function listen(
   triggers: Triggers,
   callback: (event: RuleEvent) => RuleResult,
   options: ListenOptions = {},
-): Handle {
+): ListenerHandle {
   const run = currentRun();
   const host = run && setupHosts.get(run.scope);
   if (!run || !host) {
@@ -175,6 +175,7 @@ export function listen(
   };
   let cancelled = false;
   const disarm: Disposable[] = [];
+  const armedOfListener: Array<{ nextRun?: () => Date | undefined }> = [];
   // Identity: an explicit id, else the order of listen() calls during setup. Listeners
   // registered after setup never restore holds, so their position does not matter.
   const n = host.inSetup ? host.listenCount++ : -1;
@@ -183,6 +184,7 @@ export function listen(
     position: (i) => `${base}.${i}`,
     restoreHolds: host.inSetup,
     collect: disarm,
+    armed: armedOfListener,
   });
   for (const trigger of startups)
     host.startupListeners.push(() => fire(trigger, { type: "startup" }));
@@ -192,6 +194,9 @@ export function listen(
       if (cancelled) return;
       cancelled = true;
       for (const d of disarm.splice(0)) d.dispose();
+    },
+    get nextRun() {
+      return cancelled ? undefined : earliest(armedOfListener.map((a) => a.nextRun?.()));
     },
   };
 }
@@ -205,7 +210,12 @@ function arm(
   sources: TriggerSources,
   triggers: readonly Trigger[],
   fire: (trigger: Trigger, payload: EventPayload) => void,
-  how: { position: (index: number) => string; restoreHolds: boolean; collect?: Disposable[] },
+  how: {
+    position: (index: number) => string;
+    restoreHolds: boolean;
+    collect?: Disposable[];
+    armed?: Array<{ nextRun?: () => Date | undefined }>;
+  },
 ): StartupTrigger[] {
   const startups: StartupTrigger[] = [];
   for (const [index, trigger] of triggers.entries()) {
@@ -230,10 +240,29 @@ function arm(
         );
       },
     });
-    scope.onDispose(() => armed.dispose());
-    how.collect?.push(armed);
+    const entry = {
+      kind: trigger.kind,
+      ...(armed.nextRun ? { nextRun: () => armed.nextRun?.() } : {}),
+    };
+    scope.armedTriggers.add(entry);
+    how.armed?.push(entry);
+    const disarm = {
+      dispose: () => {
+        scope.armedTriggers.delete(entry);
+        armed.dispose();
+      },
+    };
+    scope.onDispose(() => disarm.dispose());
+    how.collect?.push(disarm);
   }
   return startups;
+}
+
+/** The earliest of several next-run times. */
+export function earliest(times: ReadonlyArray<Date | undefined>): Date | undefined {
+  let min: Date | undefined;
+  for (const t of times) if (t && (!min || t < min)) min = t;
+  return min;
 }
 
 function asList(triggers: Triggers): readonly Trigger[] {

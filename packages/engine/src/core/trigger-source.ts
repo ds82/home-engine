@@ -30,7 +30,12 @@ export interface ArmContext {
   reportError(error: Error): void;
 }
 
-/** Arms `trigger`; the returned disposable disarms it. */
-export type TriggerSource = (trigger: Trigger, context: ArmContext) => Disposable;
+/** An armed trigger: disposing disarms it. Time triggers also report their next run. */
+export interface ArmedTrigger extends Disposable {
+  nextRun?(): Date | undefined;
+}
+
+/** Arms `trigger`; the returned value disarms it. */
+export type TriggerSource = (trigger: Trigger, context: ArmContext) => ArmedTrigger;
 
 export type TriggerSources = Partial<Record<Trigger["kind"], TriggerSource>>;

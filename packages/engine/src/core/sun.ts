@@ -125,11 +125,13 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
     const offsetMs = trigger.offset === undefined ? 0 : parseOffset(trigger.offset);
     let cancel: () => void = () => {};
     let stopped = false;
+    let pending: number | undefined;
 
     /** Arms the next firing, or a re-check at the next local day if today has none. */
     const arm = (after: number): void => {
       cancel();
       cancel = () => {};
+      pending = undefined;
       const loc = location();
       if (!loc || stopped) return; // armed again when the Site becomes known
       const tz = timeZone();
@@ -150,6 +152,7 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
         }
         const at = time + offsetMs;
         if (at > after) {
+          pending = at;
           cancel = clock.setTimeout(() => {
             if (stopped) return;
             context.fire({ type: "sun", event: trigger.event, scheduledAt: new Date(at) });
@@ -163,6 +166,7 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
     arm(clock.now());
     const offSite = options.onSiteChange?.(() => arm(clock.now()));
     return {
+      nextRun: () => (stopped || pending === undefined ? undefined : new Date(pending)),
       dispose: () => {
         stopped = true;
         cancel();

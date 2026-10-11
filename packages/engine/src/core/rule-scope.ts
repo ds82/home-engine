@@ -41,6 +41,8 @@ export class RuleScopeImpl implements RuleScope {
   lastError: Error | undefined;
   /** Triggers the backend rejected, by trigger identity. */
   readonly triggerErrors = new Map<string, { kind: string; message: string }>();
+  /** Currently armed triggers (for next-run reporting). */
+  readonly armedTriggers = new Set<{ kind: string; nextRun?: () => Date | undefined }>();
 
   constructor(
     readonly ruleId: string,

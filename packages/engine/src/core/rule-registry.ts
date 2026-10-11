@@ -4,7 +4,7 @@
 
 import type { RuleDefinition } from "./registration.js";
 import type { RuleScopeImpl } from "./rule-scope.js";
-import { startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
+import { earliest, startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
 
 export type RuleStatus = "running" | "disabled" | "failed";
 
@@ -23,6 +23,10 @@ export interface RuleInfo {
   lastError: string | undefined;
   /** Triggers the backend rejected; the rule keeps running without them. */
   triggerErrors: Array<{ kind: string; message: string }>;
+  /** Earliest next run of the rule's time triggers. */
+  nextRun: Date | undefined;
+  /** Next run per armed time trigger. */
+  nextRuns: Array<{ kind: string; nextRun: Date }>;
 }
 
 export interface FileInfo {
@@ -162,7 +166,17 @@ export class RuleRegistry {
       lastRunAt: scope?.lastRunAt,
       lastError: (started?.error ?? scope?.lastError)?.message,
       triggerErrors: scope ? [...scope.triggerErrors.values()] : [],
+      ...this.schedule(scope),
     };
+  }
+
+  private schedule(scope: RuleScopeImpl | undefined): Pick<RuleInfo, "nextRun" | "nextRuns"> {
+    const nextRuns: RuleInfo["nextRuns"] = [];
+    for (const armed of scope?.armedTriggers ?? []) {
+      const next = armed.nextRun?.();
+      if (next) nextRuns.push({ kind: armed.kind, nextRun: next });
+    }
+    return { nextRun: earliest(nextRuns.map((n) => n.nextRun)), nextRuns };
   }
 
   private findIdCollision(file: string, definitions: readonly RuleDefinition[]): Error | undefined {

@@ -99,11 +99,13 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
 
     let cancel: () => void = () => {};
     let stopped = false;
+    let pending: number | undefined;
     const fireAt = (at: number): void => {
       context.fire({ type: "time", scheduledAt: new Date(at) });
     };
     const armNext = (after: number): void => {
       const at = firstAfter(after);
+      pending = at;
       cancel = clock.setTimeout(() => {
         if (stopped) return;
         fireAt(at);
@@ -113,6 +115,7 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
     if (trigger.immediate) fireAt(clock.now());
     armNext(clock.now());
     return {
+      nextRun: () => (stopped || pending === undefined ? undefined : new Date(pending)),
       dispose: () => {
         stopped = true;
         cancel();
@@ -136,9 +139,11 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
 
     let cancel: () => void = () => {};
     let stopped = false;
+    let pending: number | undefined;
     const arm = (after: number): void => {
       cancel();
       const at = next(after);
+      pending = at;
       if (at === undefined || stopped) return;
       cancel = clock.setTimeout(() => {
         if (stopped) return;
@@ -149,6 +154,7 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
     arm(clock.now());
     const offSite = onSiteChange?.(() => arm(clock.now()));
     return {
+      nextRun: () => (stopped || pending === undefined ? undefined : new Date(pending)),
       dispose: () => {
         stopped = true;
         cancel();

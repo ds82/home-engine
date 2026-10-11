@@ -47,6 +47,12 @@ export interface TimerHandle extends Handle {
   readonly nextRun: Date | undefined;
 }
 
+/** A listener registration; for time triggers it also knows when it fires next. */
+export interface ListenerHandle extends Handle {
+  /** Next run of the listener's time triggers, or undefined. */
+  readonly nextRun: Date | undefined;
+}
+
 export interface ListenOptions {
   /** Stable identity for hold restoration when listeners are registered conditionally. */
   id?: string;
@@ -80,7 +86,7 @@ export function listen<const T extends Triggers>(
   triggers: T,
   callback: (event: EventFor<T>) => RuleResult,
   options?: ListenOptions,
-): Handle;
-export function listen(): Handle {
+): ListenerHandle;
+export function listen(): ListenerHandle {
   return notInEngine("listen");
 }
