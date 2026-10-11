@@ -35,6 +35,16 @@ export type {
   TimerHandle,
 } from "./rules.js";
 export { listen, rule, setup } from "./rules.js";
+export {
+  cron,
+  daily,
+  every,
+  onChange,
+  onEvent,
+  onStartup,
+  onTrigger,
+  sun,
+} from "./trigger-constructors.js";
 export type {
   CronTrigger,
   DailyTrigger,

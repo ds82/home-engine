@@ -45,7 +45,7 @@
 - [x] 6.4 Implement the scoped native timer shim injected via esbuild (`setTimeout`/`setInterval`/`clear*` tracked per run scope or file scope); verify tests that a raw `setTimeout` from an old file version never fires after reload and that module-level `clearTimeout` still works
 - [x] 6.5 Implement syntax-error reporting (file, line, column) without aborting other files; verify a test with one broken and one valid file
 - [x] 6.6 Implement user dependency installation into `/data` (copy manifest, `npm ci`/`npm install --omit=dev`, hash-based skip, read-only `/rules` support, failure tolerance); verify integration tests with a local tarball dependency (no network) and the skip-when-unchanged scenario
-- [ ] 6.7 Document rule files, `rule()` in both forms, rule IDs (default and explicit `id`), factories/loops, helper modules, timer scoping and user dependencies in `docs/rules/files.md`; verify code samples compile via the docs type-check script
+- [x] 6.7 Document rule files, `rule()` in both forms, rule IDs (default and explicit `id`), factories/loops, helper modules, timer scoping and user dependencies in `docs/rules/files.md`; verify code samples compile via the docs type-check script
 
 ## 7. Hot reload (rule-lifecycle)
 

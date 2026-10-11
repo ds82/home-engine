@@ -2,6 +2,7 @@
 // replaces this module with its own runtime when it bundles a rule file.
 
 import type { EventFor } from "./events.js";
+import { notInEngine } from "./stub.js";
 import type { Triggers } from "./triggers.js";
 
 export type ConcurrencyMode = "parallel" | "single" | "queued" | "restart";
@@ -49,12 +50,6 @@ export interface TimerHandle extends Handle {
 export interface ListenOptions {
   /** Stable identity for hold restoration when listeners are registered conditionally. */
   id?: string;
-}
-
-function notInEngine(name: string): never {
-  throw new Error(
-    `${name}() is provided by home-engine at runtime; this package only contains types.`,
-  );
 }
 
 /**
