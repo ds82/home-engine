@@ -36,6 +36,7 @@ export type {
   TimerHandle,
 } from "./rules.js";
 export { listen, rule, setup } from "./rules.js";
+export { shared, store, type KeyValueStore } from "./storage.js";
 export {
   averageSince,
   changeSince,

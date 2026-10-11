@@ -5,6 +5,7 @@
 import { registerSetupRule, registerTriggeredRule } from "./registration.js";
 import { listen } from "./rule-runner.js";
 import type { Scheduling } from "./scheduling.js";
+import { storageSdk, type Storage } from "./storage.js";
 import { cron, daily, every, onStartup, sun } from "./trigger-constructors.js";
 
 export const SDK_RUNTIME_KEY = Symbol.for("home-engine.sdk");
@@ -12,7 +13,7 @@ export const SDK_RUNTIME_KEY = Symbol.for("home-engine.sdk");
 export type SdkRuntime = Record<string, unknown>;
 
 /** The core's SDK functions; adapters extend this object with their own. */
-export function coreSdkRuntime(scheduling?: Scheduling): SdkRuntime {
+export function coreSdkRuntime(scheduling?: Scheduling, storage?: Storage): SdkRuntime {
   return {
     rule: registerTriggeredRule,
     setup: registerSetupRule,
@@ -30,6 +31,7 @@ export function coreSdkRuntime(scheduling?: Scheduling): SdkRuntime {
           ...scheduling.sun,
         }
       : {}),
+    ...(storage ? storageSdk(storage) : {}),
   };
 }
 
