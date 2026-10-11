@@ -4,20 +4,38 @@
 // every rule file whose bundle includes a changed helper (from the bundles' metafiles).
 // Affected files are unloaded and loaded again; deleted ones are only unloaded.
 
+import { EventEmitter } from "node:events";
 import { relative, resolve, sep } from "node:path";
-import { watch, type FSWatcher } from "chokidar";
+import { watch, type ChokidarOptions } from "chokidar";
+import type { WatchPollMode } from "./config.js";
 import { discoverRuleFiles, reportDiscovery } from "./discovery.js";
 import type { RuleLoader } from "./loader.js";
 import type { Logger } from "./logger.js";
 
 export const DEBOUNCE_MS = 200;
+/** Polling interval; changes are detected within about this time plus the debounce. */
+export const POLL_INTERVAL_MS = 1_000;
+
+/** The parts of a chokidar watcher the reloader uses. */
+export interface Watcher extends EventEmitter {
+  close(): Promise<void>;
+}
+
+export type WatchFactory = (path: string, options: ChokidarOptions) => Watcher;
+
+/** How the rules directory is watched right now. */
+export type WatchMode = "native" | "polling" | "unavailable";
 
 export interface HotReloadOptions {
   rulesDir: string;
   loader: RuleLoader;
   log: Logger;
+  /** WATCH_POLL: `auto` (native, fall back to polling), `true` (always poll), `false` (never). */
+  watchPoll?: WatchPollMode;
   /** Quiet period after the last file event before reloading. */
   debounceMs?: number;
+  /** Creates watchers; injectable for tests. */
+  watchFactory?: WatchFactory;
 }
 
 export interface ReloadSummary {
@@ -26,7 +44,11 @@ export interface ReloadSummary {
 }
 
 export class HotReloader {
-  private watcher: FSWatcher | undefined;
+  private watcher: Watcher | undefined;
+  private currentMode: WatchMode = "unavailable";
+  /** Set while a failed native watcher is being replaced by a polling one. */
+  private replacing: Promise<void> = Promise.resolve();
+  private stopped = false;
   private readonly changed = new Set<string>();
   private timer: ReturnType<typeof setTimeout> | undefined;
   /** Serialises flushes: rule files are evaluated one at a time. */
@@ -38,27 +60,91 @@ export class HotReloader {
     this.rulesDir = resolve(options.rulesDir);
   }
 
-  /** Starts watching; resolves once the watcher is ready. */
+  /** The active watch mode, for the startup log and the status endpoint. */
+  get mode(): WatchMode {
+    return this.currentMode;
+  }
+
+  /** Starts watching; resolves once a watcher is ready (or hot reload is unavailable). */
   async start(): Promise<void> {
-    const watcher = watch(this.rulesDir, {
-      ignoreInitial: true,
-      ignored: (path) => path.split(sep).includes("node_modules"),
-    });
-    this.watcher = watcher;
-    for (const event of ["add", "change", "unlink"] as const) {
-      watcher.on(event, (path: string) => this.onFileEvent(path));
-    }
-    watcher.on("error", (err: unknown) =>
-      this.options.log.error({ err }, "Watching the rules directory failed"),
+    const poll = this.options.watchPoll ?? "auto";
+    await this.startWatcher(poll === "true" ? "polling" : "native");
+    this.options.log.info(
+      { watchMode: this.currentMode, watchPoll: poll },
+      this.currentMode === "unavailable"
+        ? "Hot reload is unavailable"
+        : `Watching ${this.rulesDir} for changes (${this.currentMode})`,
     );
-    await new Promise<void>((ready) => watcher.once("ready", () => ready()));
   }
 
   async stop(): Promise<void> {
+    this.stopped = true;
     clearTimeout(this.timer);
     await this.watcher?.close();
     this.watcher = undefined;
+    this.currentMode = "unavailable";
     await this.queue;
+  }
+
+  private async startWatcher(mode: "native" | "polling"): Promise<void> {
+    const factory = this.options.watchFactory ?? ((path, opts) => watch(path, opts));
+    const watcher = factory(this.rulesDir, {
+      ignoreInitial: true,
+      ignored: (path: string) => path.split(sep).includes("node_modules"),
+      usePolling: mode === "polling",
+      interval: POLL_INTERVAL_MS,
+      binaryInterval: POLL_INTERVAL_MS,
+    });
+    this.watcher = watcher;
+    this.currentMode = mode;
+    for (const event of ["add", "change", "unlink"] as const) {
+      watcher.on(event, (path: string) => this.onFileEvent(path));
+    }
+
+    let failedEarly: unknown;
+    const ready = new Promise<void>((resolveReady) => {
+      watcher.once("ready", () => resolveReady());
+      watcher.on("error", (err: unknown) => {
+        failedEarly ??= err;
+        resolveReady();
+        void this.onWatchError(watcher, mode, err);
+      });
+    });
+    await ready;
+    // A setup failure already switched watchers; wait for the replacement to be ready.
+    if (failedEarly !== undefined) await this.replacing;
+  }
+
+  /** Native watching failed: fall back to polling (auto), or give up (WATCH_POLL=false). */
+  private async onWatchError(watcher: Watcher, mode: WatchMode, err: unknown): Promise<void> {
+    const { log } = this.options;
+    if (watcher !== this.watcher || this.stopped) return;
+    const reason = (err as NodeJS.ErrnoException).code ?? String(err);
+    const poll = this.options.watchPoll ?? "auto";
+
+    if (mode === "native" && poll === "auto") {
+      log.warn(
+        { err, reason },
+        `Native file watching failed (${reason}); falling back to polling every ${POLL_INTERVAL_MS / 1000} s`,
+      );
+      this.watcher = undefined;
+      this.replacing = watcher.close().then(() => this.startWatcher("polling"));
+      await this.replacing;
+      return;
+    }
+
+    if (mode === "native" && poll === "false") {
+      log.error(
+        { err, reason },
+        `Native file watching failed (${reason}) and WATCH_POLL=false; hot reload is unavailable, loaded rules keep running`,
+      );
+      this.watcher = undefined;
+      this.currentMode = "unavailable";
+      await watcher.close();
+      return;
+    }
+
+    log.error({ err, reason }, "Watching the rules directory failed");
   }
 
   /** Called after every reload with what was reloaded or unloaded. */
