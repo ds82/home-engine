@@ -222,17 +222,18 @@ The SDK declares an empty `interface HassEntities {}` and `interface HassService
 interface BackendAdapter {
   readonly id: string;                              // "home-assistant"
   readConfig(env: Env): AdapterConfig | ConfigError[];   // its own env vars, validated with core's fail-fast reporting
-  start(signal: AbortSignal): Promise<void>;        // connect; resolves after first successful connect + initial sync
+  start(config, signal: AbortSignal, log): Promise<void>; // connect; resolves after first successful connect + initial sync
   stop(): Promise<void>;
   status(): { connected: boolean; details: Record<string, unknown> };  // feeds /health/ready
   onStatusChange(cb: (connected: boolean) => void): Disposable;
   site(): SiteInfo | undefined;                     // the Site: time zone, lat/lon/elevation, units → core scheduler & sun
   onSiteChange(cb: () => void): Disposable;
-  createRuleApi(scope: RuleScope): object;          // backend-specific SDK functions for this scope
+  triggerSources(ctx: AdapterContext): TriggerSources;  // state/event/... trigger kinds; ctx = log, clock, fired holds, dry-run
+  sdkRuntime(ctx: AdapterContext): object;          // backend-specific SDK functions, merged into the SDK runtime
 }
 ```
 
-- `createRuleApi` receives the rule's scope, so every subscription the adapter creates registers its disposer there. Automatic cleanup, `restart`-mode aborts and error attribution then work identically for any adapter. The adapter routes callbacks through the core's `invoke` wrapper and never calls user code directly.
+- The SDK functions find the calling rule's scope through the run context (ALS), so every subscription the adapter creates registers its disposer there. Automatic cleanup, `restart`-mode aborts and error attribution then work identically for any adapter. The adapter routes callbacks through the core's `invoke` wrapper and never calls user code directly.
 - Dry-run is enforced inside the adapter's write layer, because only the adapter knows what an outgoing write is. The core provides the flag and the `[dry-run]` logging helper.
 - `typegen` takes its entity/service data through an adapter-specific source. Only Home Assistant exists now.
 

@@ -3,7 +3,11 @@
 // implementation. Adapters may import from core, never the other way round.
 
 import type { ConfigReader } from "./config.js";
-import type { RuleScope } from "./rule-scope.js";
+import type { FiredHolds } from "./fired-holds.js";
+import type { Logger } from "./logger.js";
+import type { SdkRuntime } from "./sdk-runtime.js";
+import type { Clock } from "./timer.js";
+import type { TriggerSources } from "./trigger-source.js";
 
 /** Something that can be released, such as a subscription. */
 export interface Disposable {
@@ -28,7 +32,17 @@ export interface BackendStatus {
   details: Record<string, unknown>;
 }
 
-export interface BackendAdapter<Config = unknown, RuleApi extends object = object> {
+/** What the core hands an adapter once it is connected. */
+export interface AdapterContext {
+  log: Logger;
+  clock: Clock;
+  /** The record of fired holds, for hold restoration of state triggers. */
+  firedHolds: FiredHolds;
+  /** DRY_RUN: log outgoing writes instead of sending them. */
+  dryRun: boolean;
+}
+
+export interface BackendAdapter<Config = unknown> {
   /** Stable identifier, e.g. `"home-assistant"`. */
   readonly id: string;
 
@@ -39,7 +53,7 @@ export interface BackendAdapter<Config = unknown, RuleApi extends object = objec
    * Connects. Resolves after the first successful connection and initial sync; keeps
    * retrying on network errors until then. Aborting `signal` gives up.
    */
-  start(config: Config, signal: AbortSignal): Promise<void>;
+  start(config: Config, signal: AbortSignal, log?: Logger): Promise<void>;
 
   /** Disconnects and releases everything; no callbacks fire afterwards. */
   stop(): Promise<void>;
@@ -51,9 +65,13 @@ export interface BackendAdapter<Config = unknown, RuleApi extends object = objec
   site(): SiteInfo | undefined;
   onSiteChange(callback: () => void): Disposable;
 
+  /** Trigger sources for the backend's trigger kinds (e.g. `state`, `event`); after start. */
+  triggerSources(context: AdapterContext): TriggerSources;
+
   /**
-   * Creates the backend-specific SDK functions for one started rule. Every subscription they
-   * make registers its disposer with `scope`, so unloading the rule releases it.
+   * The backend's SDK functions (e.g. `on`, `call`), merged into the SDK runtime; after start.
+   * They find the calling rule through the run context, and every subscription they make
+   * registers its disposer with that rule's scope, so unloading the rule releases it.
    */
-  createRuleApi(scope: RuleScope): RuleApi;
+  sdkRuntime(context: AdapterContext): SdkRuntime;
 }

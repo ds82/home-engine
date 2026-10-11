@@ -1,17 +1,20 @@
 // An in-memory BackendAdapter for core tests: no network, fully driven by the test.
 
-import type { BackendAdapter, BackendStatus, Disposable, SiteInfo } from "../adapter.js";
+import type {
+  AdapterContext,
+  BackendAdapter,
+  BackendStatus,
+  Disposable,
+  SiteInfo,
+} from "../adapter.js";
 import type { ConfigProblem, Env } from "../config.js";
-import type { RuleScope } from "../rule-scope.js";
+import { requireRun } from "../run-context.js";
+import type { SdkRuntime } from "../sdk-runtime.js";
+import type { TriggerSources } from "../trigger-source.js";
+import { FakeSources } from "./fake-sources.js";
 
 export interface FakeConfig {
   name: string;
-}
-
-export interface FakeRuleApi {
-  readonly ruleId: string;
-  /** Records a subscription that is released with the rule. */
-  subscribe(name: string): void;
 }
 
 export const DEFAULT_SITE: SiteInfo = {
@@ -22,12 +25,14 @@ export const DEFAULT_SITE: SiteInfo = {
   units: { temperature: "°C", length: "km" },
 };
 
-export class FakeAdapter implements BackendAdapter<FakeConfig, FakeRuleApi> {
+export class FakeAdapter implements BackendAdapter<FakeConfig> {
   readonly id = "fake";
   /** Names of currently active subscriptions, as `<ruleId>:<name>`. */
   readonly subscriptions = new Set<string>();
-  /** Every scope `createRuleApi` was called with. */
-  readonly scopes: RuleScope[] = [];
+  /** Drives `state` triggers: `fake.change("binary_sensor.motion")`. */
+  readonly fake = new FakeSources();
+  /** The context the core handed over, once it asked for trigger sources. */
+  context: AdapterContext | undefined;
   started = false;
   config: FakeConfig | undefined;
 
@@ -76,11 +81,17 @@ export class FakeAdapter implements BackendAdapter<FakeConfig, FakeRuleApi> {
     return { dispose: () => this.siteListeners.delete(callback) };
   }
 
-  createRuleApi(scope: RuleScope): FakeRuleApi {
-    this.scopes.push(scope);
+  triggerSources(context: AdapterContext): TriggerSources {
+    this.context = context;
+    const { state } = this.fake.sources;
+    return state ? { state } : {};
+  }
+
+  /** `fakeSubscribe(name)` records a subscription of the calling rule, released with it. */
+  sdkRuntime(): SdkRuntime {
     return {
-      ruleId: scope.ruleId,
-      subscribe: (name) => {
+      fakeSubscribe: (name: string) => {
+        const { scope } = requireRun("fakeSubscribe");
         const key = `${scope.ruleId}:${name}`;
         this.subscriptions.add(key);
         scope.onDispose(() => {
