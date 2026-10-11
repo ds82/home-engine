@@ -119,6 +119,11 @@ export class RuleRegistry {
     await Promise.all([...this.files.keys()].map((file) => this.unloadFile(file)));
   }
 
+  /** True when `file` is known (loaded or failed). */
+  hasFile(file: string): boolean {
+    return this.files.has(file);
+  }
+
   listRules(): RuleInfo[] {
     return [...this.rules.values()].flat().map((entry) => this.info(entry));
   }

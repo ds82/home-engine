@@ -96,6 +96,11 @@ export class RuleLoader {
     }
   }
 
+  /** True when `file` was loaded (successfully or not). */
+  isLoaded(file: string): boolean {
+    return this.options.registry.hasFile(file);
+  }
+
   /** Unloads a rule file that was removed. */
   async unloadFile(file: string): Promise<void> {
     this.graph.delete(file);

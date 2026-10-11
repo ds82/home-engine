@@ -193,7 +193,7 @@ Three GET routes, no framework. Liveness also checks event-loop lag (via `perf_h
 
 ### D14: File watching: chokidar with polling fallback
 
-`chokidar` (v4) watches `RULES_DIR` with native `fs.watch` (inotify on Linux). With `WATCH_POLL=auto` (default), an error while setting up or running native watching (`ENOSPC` = inotify watch limit, `ENOSYS`/`EPERM`/`EMFILE`, unsupported file system) tears down the native watcher. A new watcher is then started with `usePolling: true` and a 1 s interval, and a warning is logged with the reason. `WATCH_POLL=true` starts in polling mode directly. `WATCH_POLL=false` treats a native failure as "hot reload unavailable" (error log, rules keep running). All modes feed the same debounced change pipeline (D3 dependency graph). The active mode is reported in the `/rules` endpoint's engine metadata and in the startup log.
+`chokidar` (v5) watches `RULES_DIR` with native `fs.watch` (inotify on Linux). With `WATCH_POLL=auto` (default), an error while setting up or running native watching (`ENOSPC` = inotify watch limit, `ENOSYS`/`EPERM`/`EMFILE`, unsupported file system) tears down the native watcher. A new watcher is then started with `usePolling: true` and a 1 s interval, and a warning is logged with the reason. `WATCH_POLL=true` starts in polling mode directly. `WATCH_POLL=false` treats a native failure as "hot reload unavailable" (error log, rules keep running). All modes feed the same debounced change pipeline (D3 dependency graph). The active mode is reported in the `/rules` endpoint's engine metadata and in the startup log.
 
 ### D11: Container
 
