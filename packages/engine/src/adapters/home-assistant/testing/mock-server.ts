@@ -326,6 +326,13 @@ export class MockHomeAssistant {
   }
 
   /** All active `subscribe_trigger` subscriptions. */
+  /** Active `subscribe_events` subscriptions, with their event type (undefined = all). */
+  eventSubscriptions(): Array<{ id: number; eventType: string | undefined }> {
+    return [...this.subscriptions.values()].flatMap((m) =>
+      [...m.values()].map(({ id, eventType }) => ({ id, eventType })),
+    );
+  }
+
   triggerSubscriptions(): TriggerSubscription[] {
     return [...this.triggers.values()].flatMap((m) => [...m.values()]);
   }
