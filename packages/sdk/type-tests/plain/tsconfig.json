@@ -1,0 +1,10 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "paths": { "@home-engine/sdk": ["../../src/index.ts"] },
+    "allowImportingTsExtensions": true
+  },
+  "include": ["*.ts"]
+}
