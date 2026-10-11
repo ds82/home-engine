@@ -68,7 +68,7 @@ Names: npm packages `home-engine` (engine/CLI) and `@home-engine/sdk`; GitHub or
 
 Node's ESM loader cannot evict modules, so plain `import()` cannot reload a changed file. For each rule file, the loader:
 1. Bundles it with esbuild (`format: esm`, `platform: node`, `bundle: true`, `packages: external`, `sourcemap: inline`). Local imports (helpers such as `_lib/*.ts`) are inlined. Bare package imports stay external.
-2. Rewrites the SDK import (`@home-engine/sdk`) to the engine's own SDK runtime entry with an esbuild plugin. All rules then share the engine's singleton implementation, and users never need the SDK installed in the container.
+2. Rewrites the SDK import (`@home-engine/sdk`) with an esbuild plugin to a small virtual module that re-exports the engine's SDK runtime object, which the engine installs on `globalThis` under `Symbol.for("home-engine.sdk")`. All rules then share the engine's singleton implementation, and users never need the SDK installed in the container. Importing the runtime by file path instead could load a second copy of the engine module (and with it a second registration slot and `AsyncLocalStorage`) when the engine itself runs under a different module loader, as in tests.
 3. Writes the output to `/data/.build/<relative-path>.<contenthash>.mjs` and loads it with `import()`. A new hash gives a new module URL, so the reload picks up fresh code.
 4. Uses esbuild's `metafile` to record which source files each bundle includes. A change to any source file triggers a rebuild of exactly the rule files whose bundles contain it (this covers the "helper module edited" scenario).
 
