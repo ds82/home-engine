@@ -191,3 +191,29 @@ function checkReadableDir(path: string): string | undefined {
 function errorCode(err: unknown): string {
   return (err as NodeJS.ErrnoException).code ?? String(err);
 }
+
+/** Keys whose values are never logged. */
+const SECRET_KEY = /token|secret|password|api[-_]?key/i;
+export const REDACTED = "***";
+
+/** Deep copy of `value` with every secret-looking key's value replaced by `***`. */
+export function redact(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redact);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, v]) => [
+      key,
+      SECRET_KEY.test(key) && v !== undefined ? REDACTED : redact(v),
+    ]),
+  );
+}
+
+/** The subset of a pino-style logger this module needs. */
+export interface InfoLogger {
+  info(obj: object, msg: string): void;
+}
+
+/** Logs the effective configuration at info level, with secrets redacted. */
+export function logEffectiveConfig(log: InfoLogger, config: LoadedConfig<unknown>): void {
+  log.info({ config: redact(config) }, "Effective configuration");
+}

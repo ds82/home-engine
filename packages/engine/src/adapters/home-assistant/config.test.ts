@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ConfigError, loadConfig, type Env } from "../../core/config.js";
+import { ConfigError, loadConfig, logEffectiveConfig, type Env } from "../../core/config.js";
 import { readHomeAssistantConfig } from "./config.js";
 
 const anyDir = { checkRulesDir: () => undefined };
@@ -125,5 +125,44 @@ describe("Home Assistant config", () => {
       token: "mine",
       supervisor: false,
     });
+  });
+});
+
+describe("effective configuration log", () => {
+  it("shows the token as *** and every other effective value", () => {
+    const lines: string[] = [];
+    const log = { info: (obj: object, msg: string) => lines.push(JSON.stringify({ ...obj, msg })) };
+    const config = load({
+      HA_URL: "http://ha:8123",
+      HA_TOKEN: "super-secret-token-123",
+      DISABLED_RULES: "lights/*",
+    });
+
+    logEffectiveConfig(log, config);
+
+    const output = lines.join("\n");
+    expect(output).not.toContain("super-secret-token-123");
+    expect(JSON.parse(lines[0] ?? "")).toEqual({
+      msg: "Effective configuration",
+      config: {
+        core: { ...config.core },
+        backend: { ...config.backend, token: "***" },
+      },
+    });
+  });
+
+  it("redacts a Supervisor token and a token read from a file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "he-redact-"));
+    try {
+      const file = join(dir, "t");
+      writeFileSync(file, "file-token-456\n");
+      const out: string[] = [];
+      const log = { info: (obj: object, msg: string) => out.push(JSON.stringify(obj) + msg) };
+      logEffectiveConfig(log, load({ SUPERVISOR_TOKEN: "sup-token-789" }));
+      logEffectiveConfig(log, load({ HA_URL: "http://ha", HA_TOKEN_FILE: file }));
+      expect(out.join("\n")).not.toMatch(/sup-token-789|file-token-456/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

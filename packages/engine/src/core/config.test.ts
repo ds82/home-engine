@@ -2,7 +2,14 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ConfigError, loadConfig, valueOrFile, type ConfigProblem, type Env } from "./config.js";
+import {
+  ConfigError,
+  loadConfig,
+  redact,
+  valueOrFile,
+  type ConfigProblem,
+  type Env,
+} from "./config.js";
 
 const noBackend = (): Record<string, never> => ({});
 const anyDir = { checkRulesDir: () => undefined };
@@ -187,5 +194,23 @@ describe("valueOrFile", () => {
       expect.stringMatching(/X_FILE: cannot read .*missing \(ENOENT\)/),
       expect.stringMatching(/X_FILE: file .*empty is empty/),
     ]);
+  });
+});
+
+describe("redact", () => {
+  it("replaces secret-looking keys at any depth and keeps everything else", () => {
+    expect(
+      redact({
+        token: "a",
+        nested: { accessToken: "b", list: [{ password: "c", name: "x" }], apiKey: "d" },
+        port: 8080,
+        missingToken: undefined,
+      }),
+    ).toEqual({
+      token: "***",
+      nested: { accessToken: "***", list: [{ password: "***", name: "x" }], apiKey: "***" },
+      port: 8080,
+      missingToken: undefined,
+    });
   });
 });
