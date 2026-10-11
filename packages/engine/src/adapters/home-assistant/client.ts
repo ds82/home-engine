@@ -11,7 +11,24 @@ import { WriteAttribution } from "./attribution.js";
 import { StateDispatcher } from "./state-triggers.js";
 import { SubscriptionRegistry } from "./subscriptions.js";
 
-export type ClientOptions = Omit<ConnectionOptions, "config" | "log">;
+export type ClientOptions = Omit<ConnectionOptions, "config" | "log"> & {
+  /** HTTP client for the REST API. Injectable for tests. */
+  fetch?: typeof fetch;
+};
+
+/** Timeout of a REST request. */
+export const REST_TIMEOUT_MS = 10_000;
+
+/** A REST request was answered with an error status. */
+export class HaRestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly haMessage: string,
+  ) {
+    super(`HTTP ${status}: ${haMessage}`);
+    this.name = "HaRestError";
+  }
+}
 
 /** The parts of Home Assistant's `get_config` result the engine uses. */
 export interface HaCoreConfig {
@@ -58,12 +75,15 @@ export class HaClient {
   private user: HaUser | undefined;
   private currentSite: SiteInfo | undefined;
 
+  private readonly fetch: typeof fetch;
+
   constructor(
-    config: HomeAssistantConfig,
+    private readonly endpoint: HomeAssistantConfig,
     private readonly log: Logger,
     options: ClientOptions = {},
   ) {
-    this.connection = new HaConnection({ ...options, config, log });
+    this.fetch = options.fetch ?? globalThis.fetch;
+    this.connection = new HaConnection({ ...options, config: endpoint, log });
     this.subscriptions = new SubscriptionRegistry(log);
     this.states = new StateCache(this.subscriptions, log);
     this.attribution = new WriteAttribution({ engineUserId: () => this.userId });
@@ -178,6 +198,33 @@ export class HaClient {
     this.firstReady?.resolve();
     this.firstReady = undefined;
     for (const listener of [...this.readyListeners]) listener();
+  }
+
+  /**
+   * Sends a REST request (`path` relative to the REST base URL, which is
+   * `http://supervisor/core/api` in Supervisor mode) and resolves with the JSON reply.
+   */
+  async rest<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+    const res = await this.fetch(`${this.endpoint.restUrl}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${this.endpoint.token}`,
+        "content-type": "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(REST_TIMEOUT_MS),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      let message = text || res.statusText;
+      try {
+        message = (JSON.parse(text) as { message?: string }).message ?? message;
+      } catch {
+        // Not JSON: keep the raw text.
+      }
+      throw new HaRestError(res.status, message);
+    }
+    return (text ? JSON.parse(text) : undefined) as T;
   }
 
   /** Services by domain from the latest get_services; undefined before the first connect. */

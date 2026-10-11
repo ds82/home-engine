@@ -5,7 +5,7 @@
 // clients sent through `calls` and `received`.
 
 import { randomUUID } from "node:crypto";
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 import type { HaContext, HaState } from "../types.js";
@@ -173,10 +173,7 @@ export class MockHomeAssistant {
   /** Starts listening. Without a port, a free one is chosen; `start()` after `stop()` reuses it. */
   async start(port = this.listenPort): Promise<void> {
     if (this.http) return;
-    const http = createServer((_req, res) => {
-      res.statusCode = 404;
-      res.end();
-    });
+    const http = createServer((req, res) => void this.onHttp(req, res));
     const wss = new WebSocketServer({ server: http });
     wss.on("connection", (socket) => this.onConnection(socket));
     await new Promise<void>((resolve, reject) => {
@@ -232,6 +229,53 @@ export class MockHomeAssistant {
   setTokens(tokens: string[]): void {
     this.tokens.clear();
     for (const t of tokens) this.tokens.add(t);
+  }
+
+  // --------------------------------------------------------------------- REST
+
+  /** REST requests received, in order (method, path, parsed JSON body). */
+  readonly restRequests: Array<{ method: string; path: string; body: unknown }> = [];
+
+  /** Handles the REST API subset the engine uses: `POST /api/states/<entity_id>`. */
+  private async onHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    const text = Buffer.concat(chunks).toString("utf8");
+    const path = req.url ?? "/";
+    const reply = (status: number, body: unknown): void => {
+      res.statusCode = status;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(body));
+    };
+    let body: unknown;
+    try {
+      body = text ? JSON.parse(text) : undefined;
+    } catch {
+      reply(400, { message: "Invalid JSON specified." });
+      return;
+    }
+    this.restRequests.push({ method: req.method ?? "GET", path, body });
+    const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1];
+    if (!token || !this.tokens.has(token)) {
+      reply(401, { message: "401: Unauthorized" });
+      return;
+    }
+    const match = /^\/api\/states\/([^/?]+)$/.exec(path);
+    if (req.method !== "POST" || !match?.[1]) {
+      reply(404, { message: "Not found" });
+      return;
+    }
+    const entityId = decodeURIComponent(match[1]);
+    const { state, attributes } = (body ?? {}) as { state?: unknown; attributes?: unknown };
+    if (typeof state !== "string") {
+      reply(400, { message: "No state specified." });
+      return;
+    }
+    const existed = this.states.has(entityId);
+    const next = this.setState(entityId, state, (attributes ?? {}) as Record<string, unknown>, {
+      context: newContext(this.userId),
+    });
+    reply(existed ? 200 : 201, next);
   }
 
   // ------------------------------------------------------------------- states

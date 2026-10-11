@@ -6,9 +6,11 @@
 import { currentRun, invoke, requireRun } from "../../core/run-context.js";
 import { trackWrite } from "../../core/safety-net.js";
 import type { Logger } from "../../core/logger.js";
+import type { RuleScopeImpl } from "../../core/rule-scope.js";
 import { trackedServiceCall } from "./attribution.js";
-import type { HaClient } from "./client.js";
+import { HaRestError, type HaClient } from "./client.js";
 import { HaCommandError, HaDisconnectedError } from "./session.js";
+import type { HaState } from "./types.js";
 
 export interface ServiceTarget {
   entity_id?: string | string[];
@@ -59,6 +61,12 @@ export interface Writes {
   up(cover: string, position?: number): Promise<void>;
   down(cover: string, position?: number): Promise<void>;
   fire(eventType: string, data?: Record<string, unknown>): Promise<void>;
+  /** Creates or updates a virtual entity; republished after Home Assistant restarts. */
+  setState(
+    entity: string,
+    state: string | number | boolean,
+    attributes?: Record<string, unknown>,
+  ): Promise<void>;
   /** Raw WebSocket access for features the engine does not wrap. */
   ws: { command<T = unknown>(message: Record<string, unknown> & { type: string }): Promise<T> };
   /** Connection status and notifications for rules. */
@@ -76,6 +84,29 @@ function checkEntity(fn: string, entity: unknown): string {
     throw new TypeError(`${fn}(): ${JSON.stringify(entity)} is not an entity ID`);
   }
   return entity;
+}
+
+/** A JSON round-tripped copy of `data`, or a TypeError naming the function. */
+function jsonData(
+  fn: string,
+  what: string,
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  try {
+    return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+  } catch (err) {
+    throw new TypeError(`${fn}(): ${what} must be JSON-serialisable (${(err as Error).message})`, {
+      cause: err,
+    });
+  }
+}
+
+/** The last value a loaded rule set for a virtual entity. */
+interface VirtualEntity {
+  scope: RuleScopeImpl;
+  state: string;
+  attributes: Record<string, unknown>;
+  release: () => void;
 }
 
 export function createWrites(client: HaClient, log: Logger): Writes {
@@ -163,17 +194,7 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     if (typeof eventType !== "string" || !/^[a-z0-9_.]+$/i.test(eventType)) {
       throw new TypeError(`fire(): ${JSON.stringify(eventType)} is not an event type`);
     }
-    let payload: Record<string, unknown>;
-    try {
-      payload = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
-    } catch (err) {
-      throw new TypeError(
-        `fire(): the event data must be JSON-serialisable (${(err as Error).message})`,
-        {
-          cause: err,
-        },
-      );
-    }
+    const payload = jsonData("fire", "the event data", data);
     const { ruleId, log: ruleLog } = caller();
     const promise = (async () => {
       const session = client.connection.current;
@@ -198,6 +219,82 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     })();
     return trackWrite(promise, `fire ${eventType}`);
   }
+
+  // Virtual entities (ha-actions: Set virtual entity state). Home Assistant forgets states
+  // set over REST when it restarts, so the last value per entity is kept while the rule
+  // that set it is loaded, and published again on every reconnect. Nothing is persisted
+  // across engine restarts.
+  const virtualEntities = new Map<string, VirtualEntity>();
+
+  const publishState = async (
+    ruleId: string,
+    entity: string,
+    state: string,
+    attributes: Record<string, unknown>,
+  ): Promise<void> => {
+    const what = `setState ${entity}`;
+    if (!client.isReady) throw new NotConnectedError(what);
+    try {
+      await client.attribution.track(ruleId, () =>
+        client.rest<HaState>("POST", `/states/${encodeURIComponent(entity)}`, {
+          state,
+          attributes,
+        }),
+      );
+    } catch (err) {
+      if (err instanceof HaRestError)
+        throw new ServiceCallError(what, `http_${err.status}`, err.haMessage);
+      throw err;
+    }
+  };
+
+  /** Remembers the value for republishing; the latest writer owns the entity. */
+  const remember = (
+    scope: RuleScopeImpl,
+    entity: string,
+    state: string,
+    attributes: Record<string, unknown>,
+  ): void => {
+    const known = virtualEntities.get(entity);
+    if (known?.scope === scope) {
+      known.state = state;
+      known.attributes = attributes;
+      return;
+    }
+    known?.release();
+    const release = scope.onDispose(() => {
+      if (virtualEntities.get(entity)?.scope === scope) virtualEntities.delete(entity);
+    });
+    virtualEntities.set(entity, { scope, state, attributes, release });
+  };
+
+  function setState(
+    entity: string,
+    state: string | number | boolean,
+    attributes: Record<string, unknown> = {},
+  ): Promise<void> {
+    checkEntity("setState", entity);
+    if (!["string", "number", "boolean"].includes(typeof state)) {
+      throw new TypeError(`setState(): the state must be a string, number or boolean`);
+    }
+    const value = String(state);
+    const attrs = jsonData("setState", "the attributes", attributes);
+    const run = currentRun();
+    if (run) remember(run.scope, entity, value, attrs);
+    const { ruleId, log: ruleLog } = caller();
+    ruleLog.debug({ entity, state: value, attributes: attrs }, `Setting ${entity} to ${value}`);
+    return trackWrite(publishState(ruleId, entity, value, attrs), `setState ${entity}`);
+  }
+
+  client.onReady(() => {
+    if (virtualEntities.size === 0) return;
+    log.info({ count: virtualEntities.size }, "Republishing virtual entities");
+    for (const [entity, v] of virtualEntities) {
+      publishState(v.scope.ruleId, entity, v.state, v.attributes).catch((err: unknown) =>
+        v.scope.log.warn({ err, entity }, `Republishing ${entity} failed`),
+      );
+    }
+  });
 
   const ws = {
     async command<T = unknown>(message: Record<string, unknown> & { type: string }): Promise<T> {
@@ -241,6 +338,7 @@ export function createWrites(client: HaClient, log: Logger): Writes {
   return {
     call,
     fire,
+    setState,
     ws,
     connection,
     on: switchTo("on", "on", false),

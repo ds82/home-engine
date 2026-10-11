@@ -72,6 +72,22 @@ export function fire(): Promise<void> {
   return notInEngine("fire");
 }
 
+/**
+ * Creates or updates a virtual entity in Home Assistant's state machine, e.g.
+ * `setState("sensor.living_room_comfort", "good", { friendly_name: "Comfort" })`.
+ * Home Assistant forgets such entities when it restarts; the engine publishes the last value
+ * again after reconnecting, as long as the rule that set it is loaded. Values are not kept
+ * across engine restarts: set them from `onStartup` (e.g. from `store`) if needed at boot.
+ */
+export function setState(
+  entity: string,
+  state: string | number | boolean,
+  attributes?: Record<string, unknown>,
+): Promise<void>;
+export function setState(): Promise<void> {
+  return notInEngine("setState");
+}
+
 /** Raw WebSocket access for features the engine does not wrap (e.g. registries). */
 export const ws: {
   command<T = unknown>(message: { type: string; [key: string]: unknown }): Promise<T>;
