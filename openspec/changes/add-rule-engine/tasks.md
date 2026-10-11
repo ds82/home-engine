@@ -74,7 +74,7 @@
 
 ## 10. State helpers and actions (ha-actions)
 
-- [ ] 10.1 Implement state reads (`getState`, `getEntity`, `getEntities`, `members`, `getNumber`) and predicates (`is`, `isOn`, `isOff`, `isOpen`, `isClosed` incl. binary_sensor mapping and unavailable handling); verify unit tests for every scenario
+- [x] 10.1 Implement state reads (`getState`, `getEntity`, `getEntities`, `members`, `getNumber`) and predicates (`is`, `isOn`, `isOff`, `isOpen`, `isClosed` incl. binary_sensor mapping and unavailable handling); verify unit tests for every scenario
 - [ ] 10.2 Implement `call` with target support, response data, error mapping and immediate rejection while disconnected; verify mock-server tests for each scenario
 - [ ] 10.3 Implement `on`/`off` (skip when already in target state, debug log), `forceOn`/`forceOff`/`toggle` with `homeassistant.*` fallback, and `up`/`down` threshold positioning; verify tests asserting exactly which service calls reach the mock server
 - [ ] 10.4 Implement `fire` and the raw WebSocket escape hatch; verify mock-server tests

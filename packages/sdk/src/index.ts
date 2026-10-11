@@ -37,6 +37,18 @@ export type {
 } from "./rules.js";
 export { listen, rule, setup } from "./rules.js";
 export {
+  getEntities,
+  getEntity,
+  getNumber,
+  getState,
+  is,
+  isClosed,
+  isOff,
+  isOn,
+  isOpen,
+  members,
+} from "./state.js";
+export {
   after,
   isAfterSunset,
   isBeforeSunrise,
