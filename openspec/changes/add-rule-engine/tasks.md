@@ -106,7 +106,7 @@
 
 ## 15. Typings generator (rule-files)
 
-- [ ] 15.1 Implement `typegen` CLI (`get_states` + `get_services` → `.d.ts` module augmentation with entity IDs, domains, service fields); verify a snapshot test against mock-server data and a type test where an unknown entity ID fails to compile
+- [x] 15.1 Implement `typegen` CLI (`get_states` + `get_services` → `.d.ts` module augmentation with entity IDs, domains, service fields); verify a snapshot test against mock-server data and a type test where an unknown entity ID fails to compile
 - [ ] 15.2 Document typings generation (local `npx` and in-container usage); verify the documented commands run against the mock server
 
 ## 16. Container image (container-image)

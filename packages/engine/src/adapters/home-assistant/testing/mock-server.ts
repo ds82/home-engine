@@ -33,6 +33,11 @@ export interface ServiceCall {
 }
 
 /** What a service handler returns: optional response data for `return_response` calls. */
+/** A service's field descriptions as `get_services` reports them. */
+export interface ServiceDescription {
+  fields: Record<string, unknown>;
+}
+
 export type ServiceHandler = (
   call: ServiceCall,
   server: MockHomeAssistant,
@@ -139,6 +144,7 @@ export class MockHomeAssistant {
   private readonly history = new Map<string, HaState[]>();
   private readonly statistics = new Map<string, StatisticRow[]>();
   private readonly services = new Map<string, ServiceHandler>();
+  private readonly serviceDescriptions = new Map<string, ServiceDescription>();
   private readonly commands = new Map<string, CommandHandler>();
   private readonly subscriptions = new Map<WebSocket, Map<number, Subscription>>();
   private readonly triggers = new Map<WebSocket, Map<number, TriggerSubscription>>();
@@ -381,8 +387,14 @@ export class MockHomeAssistant {
   // ----------------------------------------------------------------- handlers
 
   /** Registers (or replaces) the handler for `domain.service`. */
-  onService(domain: string, service: string, handler: ServiceHandler): void {
+  onService(
+    domain: string,
+    service: string,
+    handler: ServiceHandler,
+    description: ServiceDescription = { fields: {} },
+  ): void {
     this.services.set(`${domain}.${service}`, handler);
+    this.serviceDescriptions.set(`${domain}.${service}`, description);
   }
 
   /** Registers (or replaces) the handler for a WebSocket command type. */
@@ -465,10 +477,11 @@ export class MockHomeAssistant {
     this.onCommand("get_states", () => ({ result: this.getStates() }));
     this.onCommand("get_config", () => ({ result: this.config }));
     this.onCommand("get_services", () => {
-      const result: Record<string, Record<string, { name: string; fields: object }>> = {};
+      const result: Record<string, Record<string, ServiceDescription & { name: string }>> = {};
       for (const key of this.services.keys()) {
         const [domain = "", service = ""] = key.split(".");
-        (result[domain] ??= {})[service] = { name: service, fields: {} };
+        const description = this.serviceDescriptions.get(key) ?? { fields: {} };
+        (result[domain] ??= {})[service] = { name: service, ...description };
       }
       return { result };
     });

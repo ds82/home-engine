@@ -10,6 +10,9 @@
       "import": "./dist/index.js"
     }
   },
+  "bin": {
+    "home-engine-typegen": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
@@ -22,5 +25,8 @@
   },
   "dependencies": {
     "@home-engine/sdk": "0.0.0"
+  },
+  "devDependencies": {
+    "home-engine": "0.0.0"
   }
 }
