@@ -164,11 +164,13 @@ export class HaClient {
     const first = new Promise<void>((resolve, reject) => {
       this.firstReady = { resolve, reject };
     });
-    await this.connection.start();
-    await first;
+    // stop() while still connecting rejects `first`, also if the connection never resolves.
+    await Promise.race([this.connection.start().then(() => first), first]);
   }
 
   async stop(): Promise<void> {
+    this.firstReady?.reject(new Error("Stopped before connecting to Home Assistant"));
+    this.firstReady = undefined;
     await this.connection.stop();
     this.setReady(false);
     this.dispatcher.dispose();

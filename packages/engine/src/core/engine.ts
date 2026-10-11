@@ -45,9 +45,23 @@ export interface Engine {
   readonly httpPort: number | undefined;
   /** Connected to the backend and the initial load completed. */
   isReady(): boolean;
-  /** Unloads every rule, disconnects and writes pending data. */
-  stop(): Promise<void>;
+  /**
+   * Graceful shutdown: stops triggers, runs teardowns, disconnects and writes pending data.
+   * Gives up after `timeoutMs` (default SHUTDOWN_TIMEOUT_MS), still writing pending data, and
+   * reports the rules that blocked it.
+   */
+  stop(options?: { timeoutMs?: number }): Promise<ShutdownResult>;
 }
+
+export interface ShutdownResult {
+  /** Every step finished within the time limit. */
+  clean: boolean;
+  /** Rules whose unload had not finished when the time limit hit. */
+  blockedBy: string[];
+}
+
+/** Hard limit for a graceful shutdown (container-image: Graceful shutdown). */
+export const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 /** The engine's version from its package.json. */
 export function engineVersion(): string {
@@ -91,6 +105,7 @@ export async function startEngine<Config>(options: EngineOptions<Config>): Promi
   cleanups.push(() => safetyNet.uninstall());
 
   let initialLoadDone = false;
+  let flushData: () => Promise<void> = async () => {};
   let hotReloader: HotReloader | undefined;
   let registry: RuleRegistry | undefined;
   const http = new HttpServer(
@@ -128,6 +143,7 @@ export async function startEngine<Config>(options: EngineOptions<Config>): Promi
     const firedHolds = new FiredHolds(join(core.dataDir, "fired-holds.json"));
     await firedHolds.load();
     cleanups.push(() => firedHolds.flush());
+    flushData = () => Promise.all([storage.flush(), firedHolds.flush()]).then(() => undefined);
 
     log.info(`Connecting to ${adapter.id}`);
     await adapter.start(config.backend, options.signal ?? new AbortController().signal, log);
@@ -180,14 +196,37 @@ export async function startEngine<Config>(options: EngineOptions<Config>): Promi
     throw err;
   }
 
-  let stopping: Promise<void> | undefined;
+  const rules = registry;
+  let stopping: Promise<ShutdownResult> | undefined;
+  const shutdown = async (timeoutMs: number): Promise<ShutdownResult> => {
+    log.info("Shutting down");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), timeoutMs);
+    });
+    const outcome = await Promise.race([runCleanups(cleanups, log), timedOut]);
+    clearTimeout(timer);
+    if (outcome !== "timeout") {
+      log.info("Shutdown complete");
+      return { clean: true, blockedBy: [] };
+    }
+    const blockedBy = rules.stillUnloading();
+    log.error(
+      { blockedBy, timeoutMs },
+      `Shutdown did not finish within ${timeoutMs / 1000} s` +
+        (blockedBy.length ? `; blocked by ${blockedBy.join(", ")}` : ""),
+    );
+    // Whatever hangs, stored values must not be lost.
+    await flushData().catch((err: unknown) => log.error({ err }, "Writing pending data failed"));
+    return { clean: false, blockedBy };
+  };
   return {
     config,
     log,
-    registry,
+    registry: rules,
     httpPort,
     isReady: () => initialLoadDone && adapter.status().connected,
-    stop: () => (stopping ??= runCleanups(cleanups, log)),
+    stop: (opts = {}) => (stopping ??= shutdown(opts.timeoutMs ?? SHUTDOWN_TIMEOUT_MS)),
   };
 }
 

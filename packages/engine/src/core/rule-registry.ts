@@ -61,6 +61,8 @@ export class RuleRegistry {
   private readonly rules = new Map<string, RuleEntry[]>();
   /** Resources created at each file's top level (e.g. native timers). */
   private readonly fileScopes = new Map<string, RuleScopeImpl>();
+  /** Rules (and files) whose unload has not finished yet. */
+  private readonly unloading = new Set<string>();
 
   constructor(
     private readonly runner: RunnerOptions,
@@ -121,7 +123,26 @@ export class RuleRegistry {
     this.rules.delete(file);
     this.files.delete(file);
     this.fileScopes.delete(file);
-    await Promise.all([...entries.map((e) => e.started?.stop()), fileScope?.dispose()]);
+    const tracked = async (id: string, stop: (() => Promise<void>) | undefined) => {
+      if (!stop) return;
+      this.unloading.add(id);
+      try {
+        await stop();
+      } finally {
+        this.unloading.delete(id);
+      }
+    };
+    await Promise.all([
+      ...entries.map(({ definition, started }) =>
+        tracked(definition.id, started && (() => started.stop())),
+      ),
+      tracked(`file:${file}`, fileScope ? () => fileScope.dispose() : undefined),
+    ]);
+  }
+
+  /** IDs of rules (or `file:<path>` top levels) still being unloaded, e.g. a hanging teardown. */
+  stillUnloading(): string[] {
+    return [...this.unloading];
   }
 
   /** Stops everything (engine shutdown). */
