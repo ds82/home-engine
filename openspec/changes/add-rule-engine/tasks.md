@@ -70,7 +70,7 @@
 - [x] 9.3 Implement the `daily` (with weekdays) and `cron` triggers via croner in the HA/override time zone, with invalid-expression errors; verify DST spring-forward/fall-back tests for `Europe/Berlin` and a time-zone mismatch test
 - [x] 9.4 Implement the `sun` trigger (sunrise/sunset/dawn/dusk with offsets, polar-day handling, recompute on site change) and `isSunUp`/`isAfterSunset`/`isBeforeSunrise`/`nextSun`; verify tests with fixed coordinates and dates
 - [x] 9.5 Implement next-run reporting (handles and rule status) and the no-replay-of-missed-schedules behaviour; verify the corresponding scenarios
-- [ ] 9.6 Document scheduling (durations, daily/cron, sun, time zone, DST behaviour) in `docs/rules/scheduling.md`; verify code samples compile via the docs type-check script
+- [x] 9.6 Document scheduling (durations, daily/cron, sun, time zone, DST behaviour) in `docs/rules/scheduling.md`; verify code samples compile via the docs type-check script
 
 ## 10. State helpers and actions (ha-actions)
 
