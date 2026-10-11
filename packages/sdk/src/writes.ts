@@ -1,6 +1,7 @@
 // Writes to Home Assistant. They may be awaited; if not, a failure is logged for the rule.
 
 import type { EntityId, ServiceData, ServiceName, ServiceTarget } from "./entities.js";
+import type { Handle } from "./rules.js";
 import { notInEngine } from "./stub.js";
 
 export interface CallOptions {
@@ -64,3 +65,27 @@ export function down(cover: EntityId, position?: number): Promise<void>;
 export function down(): Promise<void> {
   return notInEngine("down");
 }
+
+/** Fires a custom event on Home Assistant's event bus. */
+export function fire(eventType: string, data?: Record<string, unknown>): Promise<void>;
+export function fire(): Promise<void> {
+  return notInEngine("fire");
+}
+
+/** Raw WebSocket access for features the engine does not wrap (e.g. registries). */
+export const ws: {
+  command<T = unknown>(message: { type: string; [key: string]: unknown }): Promise<T>;
+} = {
+  command: () => notInEngine("ws.command"),
+};
+
+/** Connection status and notifications. Callbacks are released when the rule is unloaded. */
+export const connection: {
+  isConnected(): boolean;
+  onConnect(callback: () => void | Promise<void>): Handle;
+  onDisconnect(callback: () => void | Promise<void>): Handle;
+} = {
+  isConnected: () => notInEngine("connection.isConnected"),
+  onConnect: () => notInEngine("connection.onConnect"),
+  onDisconnect: () => notInEngine("connection.onDisconnect"),
+};

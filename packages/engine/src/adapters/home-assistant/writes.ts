@@ -3,7 +3,7 @@
 // logs) and registered with the safety net, so a failing write nobody awaited is logged as
 // a failed write of that rule instead of an anonymous unhandled rejection.
 
-import { currentRun } from "../../core/run-context.js";
+import { currentRun, invoke, requireRun } from "../../core/run-context.js";
 import { trackWrite } from "../../core/safety-net.js";
 import type { Logger } from "../../core/logger.js";
 import { trackedServiceCall } from "./attribution.js";
@@ -58,6 +58,15 @@ export interface Writes {
   toggle(entity: string): Promise<void>;
   up(cover: string, position?: number): Promise<void>;
   down(cover: string, position?: number): Promise<void>;
+  fire(eventType: string, data?: Record<string, unknown>): Promise<void>;
+  /** Raw WebSocket access for features the engine does not wrap. */
+  ws: { command<T = unknown>(message: Record<string, unknown> & { type: string }): Promise<T> };
+  /** Connection status and notifications for rules. */
+  connection: {
+    isConnected(): boolean;
+    onConnect(callback: () => void | Promise<void>): { cancel(): void };
+    onDisconnect(callback: () => void | Promise<void>): { cancel(): void };
+  };
 }
 
 const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
@@ -150,8 +159,90 @@ export function createWrites(client: HaClient, log: Logger): Writes {
       await call("cover.set_cover_position", { position: target }, { entity_id: cover });
     };
 
+  function fire(eventType: string, data: Record<string, unknown> = {}): Promise<void> {
+    if (typeof eventType !== "string" || !/^[a-z0-9_.]+$/i.test(eventType)) {
+      throw new TypeError(`fire(): ${JSON.stringify(eventType)} is not an event type`);
+    }
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+    } catch (err) {
+      throw new TypeError(
+        `fire(): the event data must be JSON-serialisable (${(err as Error).message})`,
+        {
+          cause: err,
+        },
+      );
+    }
+    const { ruleId, log: ruleLog } = caller();
+    const promise = (async () => {
+      const session = client.connection.current;
+      if (!session || !client.isReady) throw new NotConnectedError(`fire ${eventType}`);
+      ruleLog.debug({ eventType, data: payload }, `Firing ${eventType}`);
+      try {
+        await client.attribution.track(ruleId, () =>
+          session.command<{
+            context?: { id: string; parent_id: string | null; user_id: string | null };
+          }>({
+            type: "fire_event",
+            event_type: eventType,
+            event_data: payload,
+          }),
+        );
+      } catch (err) {
+        if (err instanceof HaCommandError)
+          throw new ServiceCallError(`fire ${eventType}`, err.code, haMessage(err));
+        if (err instanceof HaDisconnectedError) throw new NotConnectedError(`fire ${eventType}`);
+        throw err;
+      }
+    })();
+    return trackWrite(promise, `fire ${eventType}`);
+  }
+
+  const ws = {
+    async command<T = unknown>(message: Record<string, unknown> & { type: string }): Promise<T> {
+      if (!message || typeof message.type !== "string") {
+        throw new TypeError(
+          'ws.command(): the message needs a "type", e.g. { type: "config/entity_registry/list" }',
+        );
+      }
+      const session = client.connection.current;
+      if (!session || !client.isReady) throw new NotConnectedError(message.type);
+      const { id: _ignored, ...rest } = message as Record<string, unknown> & { type: string };
+      void _ignored;
+      return session.command<T>(rest as Record<string, unknown> & { type: string });
+    },
+  };
+
+  /** Registers a status callback for the calling rule; released on unload. */
+  const statusListener =
+    (fn: string, wanted: boolean) => (callback: () => void | Promise<void>) => {
+      if (typeof callback !== "function")
+        throw new TypeError(`connection.${fn}(): the callback must be a function`);
+      const run = requireRun(`connection.${fn}`);
+      const sub = client.onStatusChange((connected) => {
+        if (connected === wanted) invoke(run.scope, "callback", () => callback());
+      });
+      const remove = run.scope.onDispose(() => sub.dispose());
+      return {
+        cancel: () => {
+          sub.dispose();
+          remove();
+        },
+      };
+    };
+
+  const connection = {
+    isConnected: () => client.isReady,
+    onConnect: statusListener("onConnect", true),
+    onDisconnect: statusListener("onDisconnect", false),
+  };
+
   return {
     call,
+    fire,
+    ws,
+    connection,
     on: switchTo("on", "on", false),
     off: switchTo("off", "off", false),
     forceOn: switchTo("forceOn", "on", true),
