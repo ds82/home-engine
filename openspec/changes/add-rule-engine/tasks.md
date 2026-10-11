@@ -15,7 +15,7 @@
 
 ## 3. Logging (engine-observability, part 1)
 
-- [ ] 3.1 Implement pino-based logger with levels, `pretty`/`json` formats, token redaction and child loggers per rule ID; verify unit tests for JSON fields, level filtering and `source` tagging
+- [x] 3.1 Implement pino-based logger with levels, `pretty`/`json` formats, token redaction and child loggers per rule ID; verify unit tests for JSON fields, level filtering and `source` tagging
 
 ## 4. Home Assistant connection (ha-connection)
 
