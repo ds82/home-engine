@@ -39,7 +39,7 @@
 
 ## 6. Rule files and loading (rule-files, rule-lifecycle)
 
-- [ ] 6.1 Add the docs type-check script (extracts ```ts blocks from `docs/**/*.md` and `README.md` and compiles them against the SDK types from 5.1); verify it fails on a deliberately broken sample
+- [x] 6.1 Add the docs type-check script (extracts ```ts blocks from `docs/**/*.md` and `README.md` and compiles them against the SDK types from 5.1); verify it fails on a deliberately broken sample
 - [ ] 6.2 Implement rule directory discovery with exclusion rules and rule-ID derivation (`<path>#<rule name>`), including the `.ts`/`.js` collision error and the "no rules found" warning for an empty rules directory (engine-config: Empty rules directory); verify tests for all discovery scenarios
 - [ ] 6.3 Implement the esbuild bundling pipeline (inline local imports, external packages, SDK import rewrite, inline source maps, content-hashed output in `/data/.build`, metafile dependency graph); verify tests that load a TS rule file with enums/interfaces and that a stack trace points at the original `.ts` line, and that a rule reads a custom environment variable via `process.env` (engine-config: Rules can read environment)
 - [ ] 6.4 Implement the scoped native timer shim injected via esbuild (`setTimeout`/`setInterval`/`clear*` tracked per run scope or file scope); verify tests that a raw `setTimeout` from an old file version never fires after reload and that module-level `clearTimeout` still works
