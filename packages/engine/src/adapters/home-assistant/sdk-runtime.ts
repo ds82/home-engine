@@ -6,14 +6,24 @@ import type { HoldClock } from "./state-triggers.js";
 import { onChange, onEvent, onTrigger } from "./trigger-constructors.js";
 import { createStateHelpers } from "./state-helpers.js";
 import { createWaitFor } from "./wait-for.js";
+import { createWrites } from "./writes.js";
+import type { Logger } from "../../core/logger.js";
 
-export function homeAssistantSdkRuntime(client?: HaClient, clock?: HoldClock): SdkRuntime {
+export function homeAssistantSdkRuntime(
+  client?: HaClient,
+  clock?: HoldClock,
+  log?: Logger,
+): SdkRuntime {
   return {
     onChange,
     onEvent,
     onTrigger,
     ...(client
-      ? { waitFor: createWaitFor(client, clock), ...createStateHelpers(client.states) }
+      ? {
+          waitFor: createWaitFor(client, clock),
+          ...createStateHelpers(client.states),
+          ...(log ? createWrites(client, log) : {}),
+        }
       : {}),
   };
 }

@@ -101,6 +101,7 @@ export function trackedServiceCall(
     service: string;
     service_data?: Record<string, unknown>;
     target?: Record<string, unknown>;
+    return_response?: boolean;
   },
 ): Promise<{ context: HaContext; response?: unknown }> {
   return attribution.track(ruleId, () =>

@@ -58,6 +58,7 @@ export {
   sleep,
 } from "./timing.js";
 export { waitFor, type WaitFilter, type WaitOptions } from "./wait-for.js";
+export { call, type CallOptions } from "./writes.js";
 export {
   cron,
   daily,
