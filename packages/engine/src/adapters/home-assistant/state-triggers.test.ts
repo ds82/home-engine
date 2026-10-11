@@ -55,7 +55,9 @@ describe("onChange arming", () => {
     };
     rules.push(
       await startRule(definition, {
-        sources: { state: stateTriggerSource(client.dispatcher, client.states) },
+        sources: {
+          state: stateTriggerSource({ dispatcher: client.dispatcher, cache: client.states }),
+        },
         log: logCapture([]).log,
       }),
     );

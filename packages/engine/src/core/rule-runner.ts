@@ -5,6 +5,7 @@
 
 import type {
   Handle,
+  ListenOptions,
   RuleEvent,
   RuleResult,
   StartupTrigger,
@@ -22,6 +23,7 @@ import type {
 import { RuleScopeImpl } from "./rule-scope.js";
 import { currentRun, invoke } from "./run-context.js";
 import type { EventPayload, TriggerSources } from "./trigger-source.js";
+import { triggerIdentity } from "./trigger-identity.js";
 
 export const SETUP_TIMEOUT_MS = 30_000;
 
@@ -47,6 +49,8 @@ interface SetupHost {
   inSetup: boolean;
   /** Startup listeners registered during setup, fired once setup has finished. */
   startupListeners: Array<() => void>;
+  /** Number of listen() calls during setup, for listener identities. */
+  listenCount: number;
 }
 
 const setupHosts = new WeakMap<RuleScopeImpl, SetupHost>();
@@ -82,7 +86,10 @@ async function startTriggeredRule(
   };
 
   try {
-    const startups = arm(scope, options.sources, asList(definition.triggers), fire);
+    const startups = arm(scope, options.sources, asList(definition.triggers), fire, {
+      position: (i) => `t${i}`,
+      restoreHolds: true,
+    });
     for (const trigger of startups) fire(trigger, { type: "startup" });
   } catch (err) {
     return failed(scope, err, "Starting the rule failed");
@@ -95,7 +102,12 @@ async function startSetupRule(
   options: RunnerOptions,
 ): Promise<StartedRule> {
   const scope = new RuleScopeImpl(definition.id, options.log);
-  const host: SetupHost = { sources: options.sources, inSetup: true, startupListeners: [] };
+  const host: SetupHost = {
+    sources: options.sources,
+    inSetup: true,
+    startupListeners: [],
+    listenCount: 0,
+  };
   setupHosts.set(scope, host);
 
   let result: unknown;
@@ -144,8 +156,7 @@ async function startSetupRule(
 export function listen(
   triggers: Triggers,
   callback: (event: RuleEvent) => RuleResult,
-  // The SDK's third argument (`ListenOptions`, a stable listener id) is used by hold
-  // restoration, which comes with the state trigger source.
+  options: ListenOptions = {},
 ): Handle {
   const run = currentRun();
   const host = run && setupHosts.get(run.scope);
@@ -164,7 +175,15 @@ export function listen(
   };
   let cancelled = false;
   const disarm: Disposable[] = [];
-  const startups = arm(scope, host.sources, list, fire, disarm);
+  // Identity: an explicit id, else the order of listen() calls during setup. Listeners
+  // registered after setup never restore holds, so their position does not matter.
+  const n = host.inSetup ? host.listenCount++ : -1;
+  const base = options.id !== undefined ? `id:${options.id}` : n >= 0 ? `l${n}` : "late";
+  const startups = arm(scope, host.sources, list, fire, {
+    position: (i) => `${base}.${i}`,
+    restoreHolds: host.inSetup,
+    collect: disarm,
+  });
   for (const trigger of startups)
     host.startupListeners.push(() => fire(trigger, { type: "startup" }));
 
@@ -186,19 +205,24 @@ function arm(
   sources: TriggerSources,
   triggers: readonly Trigger[],
   fire: (trigger: Trigger, payload: EventPayload) => void,
-  collect?: Disposable[],
+  how: { position: (index: number) => string; restoreHolds: boolean; collect?: Disposable[] },
 ): StartupTrigger[] {
   const startups: StartupTrigger[] = [];
-  for (const trigger of triggers) {
+  for (const [index, trigger] of triggers.entries()) {
     if (trigger.kind === "startup") {
       startups.push(trigger);
       continue;
     }
     const source = sources[trigger.kind];
     if (!source) throw new Error(`No trigger source for "${trigger.kind}" triggers`);
-    const armed = source(trigger, { scope, fire: (payload) => fire(trigger, payload) });
+    const armed = source(trigger, {
+      scope,
+      identity: triggerIdentity(how.position(index), trigger),
+      restoreHolds: how.restoreHolds,
+      fire: (payload) => fire(trigger, payload),
+    });
     scope.onDispose(() => armed.dispose());
-    collect?.push(armed);
+    how.collect?.push(armed);
   }
   return startups;
 }

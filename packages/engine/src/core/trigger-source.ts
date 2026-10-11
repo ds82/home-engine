@@ -13,6 +13,13 @@ export type EventPayload = DistributiveOmit<RuleEvent, "trigger" | "signal">;
 
 export interface ArmContext {
   scope: RuleScope;
+  /** Stable identity of this trigger within its rule (see trigger-identity.ts). */
+  identity: string;
+  /**
+   * True while the rule starts (its triggers, or listeners registered during setup): sources
+   * restore pending holds then. False for listeners registered later.
+   */
+  restoreHolds: boolean;
   /** Reports one firing of the trigger. */
   fire(payload: EventPayload): void;
 }
