@@ -142,7 +142,7 @@ Such entities are not real Home Assistant entities, and they have limitations:
 If an entity needs a value right after the engine starts, store it and set it again from
 `onStartup`:
 
-```ts nocheck
+```ts
 import { onChange, onStartup, rule, setState, store } from "@home-engine/sdk";
 
 rule("last motion", [onStartup(), onChange("binary_sensor.hall_motion", { to: "on" })], (e) => {

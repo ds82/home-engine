@@ -92,7 +92,7 @@
 ## 12. Storage (rule-storage)
 
 - [x] 12.1 Implement per-rule and shared key/value stores with JSON-serialisability checks, debounced atomic flush (tmp + fsync + rename), flush on shutdown and corrupted-file quarantine; verify unit tests for isolation, persistence across a simulated restart, reload survival and corruption handling
-- [ ] 12.2 Document storage in `docs/rules/storage.md`; verify code samples compile via the docs type-check script (also remove the `nocheck` from the `onStartup` + `store` sample in `docs/rules/actions.md`)
+- [x] 12.2 Document storage in `docs/rules/storage.md`; verify code samples compile via the docs type-check script (also remove the `nocheck` from the `onStartup` + `store` sample in `docs/rules/actions.md`)
 
 ## 13. HTTP endpoints (engine-observability, part 2)
 
