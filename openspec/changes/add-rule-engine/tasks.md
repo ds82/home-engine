@@ -9,7 +9,7 @@
 
 ## 2. Configuration (engine-config)
 
-- [ ] 2.1 Implement config loading from env with defaults, `_FILE` secret variants, Supervisor detection and aggregated validation errors; verify unit tests for every scenario in `specs/engine-config/spec.md`
+- [x] 2.1 Implement config loading from env with defaults, `_FILE` secret variants, Supervisor detection and aggregated validation errors; verify unit tests for every scenario in `specs/engine-config/spec.md`
 - [ ] 2.2 Implement redacted effective-config startup logging; verify a test asserting the token never appears in output
 - [ ] 2.3 Document all environment variables in `README.md` (table with default and description); verify the table matches the config schema via a test that compares documented names with the schema keys
 
@@ -40,8 +40,8 @@
 ## 6. Rule files and loading (rule-files, rule-lifecycle)
 
 - [ ] 6.1 Add the docs type-check script (extracts ```ts blocks from `docs/**/*.md` and `README.md` and compiles them against the SDK types from 5.1); verify it fails on a deliberately broken sample
-- [ ] 6.2 Implement rule directory discovery with exclusion rules and rule-ID derivation (`<path>#<rule name>`), including the `.ts`/`.js` collision error; verify tests for all discovery scenarios
-- [ ] 6.3 Implement the esbuild bundling pipeline (inline local imports, external packages, SDK import rewrite, inline source maps, content-hashed output in `/data/.build`, metafile dependency graph); verify tests that load a TS rule file with enums/interfaces and that a stack trace points at the original `.ts` line
+- [ ] 6.2 Implement rule directory discovery with exclusion rules and rule-ID derivation (`<path>#<rule name>`), including the `.ts`/`.js` collision error and the "no rules found" warning for an empty rules directory (engine-config: Empty rules directory); verify tests for all discovery scenarios
+- [ ] 6.3 Implement the esbuild bundling pipeline (inline local imports, external packages, SDK import rewrite, inline source maps, content-hashed output in `/data/.build`, metafile dependency graph); verify tests that load a TS rule file with enums/interfaces and that a stack trace points at the original `.ts` line, and that a rule reads a custom environment variable via `process.env` (engine-config: Rules can read environment)
 - [ ] 6.4 Implement the scoped native timer shim injected via esbuild (`setTimeout`/`setInterval`/`clear*` tracked per run scope or file scope); verify tests that a raw `setTimeout` from an old file version never fires after reload and that module-level `clearTimeout` still works
 - [ ] 6.5 Implement syntax-error reporting (file, line, column) without aborting other files; verify a test with one broken and one valid file
 - [ ] 6.6 Implement user dependency installation into `/data` (copy manifest, `npm ci`/`npm install --omit=dev`, hash-based skip, read-only `/rules` support, failure tolerance); verify integration tests with a local tarball dependency (no network) and the skip-when-unchanged scenario
