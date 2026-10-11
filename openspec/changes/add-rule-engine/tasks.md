@@ -55,7 +55,7 @@
 
 ## 8. State and event triggers (rule-triggers)
 
-- [ ] 8.1 Implement trigger constructors as frozen, eagerly validated descriptors (`onChange`, `onEvent`, `onTrigger`, `onStartup`); verify unit tests that constructors subscribe nothing and reject invalid arguments
+- [x] 8.1 Implement trigger constructors as frozen, eagerly validated descriptors (`onChange`, `onEvent`, `onTrigger`, `onStartup`); verify unit tests that constructors subscribe nothing and reject invalid arguments
 - [ ] 8.2 Implement `onChange` arming with exact IDs, arrays, globs (incl. entities created later), live creation/removal events (undefined old/new state, never matching value filters), `from`/`to` value/array/predicate filters, `ignoreUnavailable` and attribute semantics (`attribute`, `"*"`); each matching trigger fires independently; verify tests for every state-trigger scenario
 - [ ] 8.3 Implement `for` hold-duration (every change restarts or cancels; per entity or `holdAs: "group"`) and the `immediate` option (evaluated at `listen()` time for late listeners; throws with `for`/`from`); plus hold restoration on rule start from `last_changed`/`last_updated` (skipped with `from`) with a persisted engine-internal fired-holds record keyed by rule ID, trigger identity (position + descriptor, or `listen()` `id`), entity and `last_changed`, pruned when `last_changed` moves on or the rule is gone; plus resync behaviour (resynced holds count from `last_changed`, holds running out while disconnected are re-checked after resync); verify held, interrupted, matching-to-matching restart, flapping-debounce, group, reload-during-hold, elapsed-during-downtime, already-fired, edited-trigger, conditional-listener-id, store-isolation, unavailability-restore, from-filter, disconnect and immediate scenarios with fake timers
 - [ ] 8.4 Implement `onEvent` with recursive partial data filters (literal/array/predicate leaves), `onTrigger` (native HA triggers; a rejected config keeps the rule `running`, records the error on the trigger and as last error) and `onStartup` (fires on start/reload/re-enable, not on reconnect; in `listen()` only during setup); verify with mock-server tests
@@ -65,7 +65,7 @@
 
 ## 9. Scheduler (rule-scheduler)
 
-- [ ] 9.1 Implement the absolute-time timer primitive (≤ 60 s re-arm, clock-jump and >24.8-day support) and duration parser; verify unit tests with fake clock jumps and a 30-day delay
+- [ ] 9.1 Implement the absolute-time timer primitive (≤ 60 s re-arm, clock-jump and >24.8-day support) and duration parser (exists since 8.1 in `core/duration.ts`; reuse it); verify unit tests with fake clock jumps and a 30-day delay
 - [ ] 9.2 Implement `sleep` (abort-aware, tied to the run signal), `after` with handles, `randomInt` helper, and the `every` trigger; verify the delay/interval/random-delay scenarios incl. cancellation on unload and on `restart`
 - [ ] 9.3 Implement the `daily` (with weekdays) and `cron` triggers via croner in the HA/override time zone, with invalid-expression errors; verify DST spring-forward/fall-back tests for `Europe/Berlin` and a time-zone mismatch test
 - [ ] 9.4 Implement the `sun` trigger (sunrise/sunset/dawn/dusk with offsets, polar-day handling, recompute on site change) and `isSunUp`/`isAfterSunset`/`isBeforeSunrise`/`nextSun`; verify tests with fixed coordinates and dates

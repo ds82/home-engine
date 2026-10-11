@@ -4,6 +4,7 @@
 
 import { registerSetupRule, registerTriggeredRule } from "./registration.js";
 import { listen } from "./rule-runner.js";
+import { onStartup } from "./trigger-constructors.js";
 
 export const SDK_RUNTIME_KEY = Symbol.for("home-engine.sdk");
 
@@ -15,6 +16,7 @@ export function coreSdkRuntime(): SdkRuntime {
     rule: registerTriggeredRule,
     setup: registerSetupRule,
     listen,
+    onStartup,
   };
 }
 
