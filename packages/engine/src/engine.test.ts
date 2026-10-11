@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeAssistantAdapter } from "./adapters/home-assistant/adapter.js";
 import { MockHomeAssistant } from "./adapters/home-assistant/testing/mock-server.js";
 import { ConfigError } from "./core/config.js";
-import { startEngine, type Engine } from "./core/engine.js";
+import { checkDataDir, startEngine, type Engine } from "./core/engine.js";
 import { FakeAdapter } from "./core/testing/fake-adapter.js";
 import { TOKEN } from "./core/testing/log-capture.js";
 
@@ -113,6 +113,24 @@ describe("engine startup", () => {
     ).rejects.toThrow(ConfigError);
     expect(adapter.started).toBe(false);
   });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "refuses to start when the data directory is not writable, naming it and the UID",
+    () => {
+      const locked = join(root, "locked");
+      mkdirSync(locked);
+      chmodSync(locked, 0o555);
+      try {
+        expect(() => checkDataDir(locked)).toThrow(
+          new RegExp(`DATA_DIR: directory ${locked} is not writable by UID ${process.getuid?.()}`),
+        );
+        // A missing directory is created.
+        expect(() => checkDataDir(join(root, "new", "data"))).not.toThrow();
+      } finally {
+        chmodSync(locked, 0o755);
+      }
+    },
+  );
 
   describe("against the Home Assistant mock server", () => {
     let ha: MockHomeAssistant;

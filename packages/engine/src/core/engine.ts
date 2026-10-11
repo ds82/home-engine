@@ -3,11 +3,17 @@
 // trigger sources → load rules → watcher → ready. Problems in rule files never stop it;
 // invalid configuration does (ConfigError, thrown before anything starts).
 
-import { existsSync, readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AdapterContext, BackendAdapter } from "./adapter.js";
-import { loadConfig, logEffectiveConfig, type Env, type LoadedConfig } from "./config.js";
+import {
+  ConfigError,
+  loadConfig,
+  logEffectiveConfig,
+  type Env,
+  type LoadedConfig,
+} from "./config.js";
 import { installRuleDependencies } from "./dependencies.js";
 import { FiredHolds } from "./fired-holds.js";
 import { HotReloader } from "./hot-reload.js";
@@ -77,6 +83,26 @@ export function engineVersion(): string {
   return "0.0.0";
 }
 
+/**
+ * Creates the data directory if needed and checks the engine can write to it; otherwise a
+ * ConfigError names the directory and the effective UID (container-image: Non-root execution).
+ */
+export function checkDataDir(dataDir: string): void {
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    accessSync(dataDir, constants.W_OK | constants.X_OK);
+  } catch {
+    const uid = process.getuid?.() ?? "unknown";
+    throw new ConfigError([
+      {
+        message:
+          `DATA_DIR: directory ${dataDir} is not writable by UID ${uid}; ` +
+          "make it writable for that user (e.g. chown the volume) or run with a matching --user.",
+      },
+    ]);
+  }
+}
+
 /** String values of secret-looking keys, so the logger can scrub them from every line. */
 function secretsOf(config: unknown): string[] {
   if (typeof config !== "object" || config === null) return [];
@@ -89,6 +115,7 @@ export async function startEngine<Config>(options: EngineOptions<Config>): Promi
   const { adapter } = options;
   const config = loadConfig(options.env, adapter.readConfig);
   const { core } = config;
+  checkDataDir(core.dataDir);
   const log = createLogger({
     level: core.logLevel,
     format: core.logFormat,

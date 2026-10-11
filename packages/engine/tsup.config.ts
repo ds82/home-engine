@@ -7,4 +7,6 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
+  // Test-only dependency of the `testing` entry; never bundle it.
+  external: ["ws"],
 });
