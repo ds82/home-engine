@@ -142,3 +142,104 @@ describe("HotReloader", () => {
     expect(ids()).toEqual(["lights#v3"]);
   });
 });
+
+describe("HotReloader switches and broken edits", () => {
+  let root: string;
+  let rulesDir: string;
+  let registry: RuleRegistry;
+  let loader: RuleLoader;
+  let reloader: HotReloader | undefined;
+  let capture: ReturnType<typeof logCapture>;
+
+  beforeAll(() => installSdkRuntime(coreSdkRuntime()));
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "he-reload2-"));
+    rulesDir = join(root, "rules");
+    mkdirSync(rulesDir);
+    capture = logCapture([]);
+    registry = new RuleRegistry({ sources: new FakeSources().sources, log: capture.log });
+    loader = new RuleLoader({
+      rulesDir,
+      buildDir: join(root, "data", ".build"),
+      registry,
+      log: capture.log,
+    });
+  });
+
+  afterEach(async () => {
+    await reloader?.stop();
+    reloader = undefined;
+    await registry.unloadAll();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function waitForReload(r: HotReloader): Promise<ReloadSummary> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("no reload within 5 s")), 5_000);
+      const off = r.onReload((s) => {
+        clearTimeout(timeout);
+        off();
+        resolve(s);
+      });
+    });
+  }
+
+  it("does not reload anything with HOT_RELOAD=false", async () => {
+    writeFileSync(join(rulesDir, "lights.ts"), ruleFile("v1"));
+    await loader.loadAll();
+    reloader = new HotReloader({
+      rulesDir,
+      loader,
+      log: capture.log,
+      enabled: false,
+      debounceMs: 50,
+    });
+    await reloader.start();
+    expect(reloader.mode).toBe("disabled");
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "info",
+        message: expect.stringMatching(/Hot reload is disabled/),
+      }),
+    );
+
+    writeFileSync(join(rulesDir, "lights.ts"), ruleFile("v2"));
+    writeFileSync(join(rulesDir, "new.ts"), ruleFile("added"));
+    await sleep(400);
+    expect(registry.listRules().map((r) => r.id)).toEqual(["lights#v1"]);
+  });
+
+  it("unloads the previous rules on a broken edit, logs the error and recovers on fix", async () => {
+    writeFileSync(join(rulesDir, "lights.ts"), ruleFile("v1"));
+    await loader.loadAll();
+    reloader = new HotReloader({ rulesDir, loader, log: capture.log, debounceMs: 50 });
+    await reloader.start();
+
+    let reload = waitForReload(reloader);
+    writeFileSync(
+      join(rulesDir, "lights.ts"),
+      'import { rule } from "@home-engine/sdk";\nrule("v2", {;\n',
+    );
+    await reload;
+    expect(registry.listRules()).toEqual([]);
+    expect(registry.listFiles()).toEqual([
+      expect.objectContaining({
+        file: "lights.ts",
+        status: "failed",
+        error: expect.stringMatching(/^Syntax error in lights\.ts:2:/),
+      }),
+    ]);
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({ level: "error", file: "lights.ts", line: 2 }),
+    );
+
+    reload = waitForReload(reloader);
+    writeFileSync(join(rulesDir, "lights.ts"), ruleFile("v3"));
+    await reload;
+    expect(registry.listRules().map((r) => [r.id, r.status])).toEqual([["lights#v3", "running"]]);
+    expect(registry.listFiles()).toEqual([
+      expect.objectContaining({ file: "lights.ts", status: "loaded" }),
+    ]);
+  });
+});

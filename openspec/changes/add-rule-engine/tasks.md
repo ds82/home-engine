@@ -51,7 +51,7 @@
 
 - [x] 7.1 Implement the chokidar watcher with debounce, mapping changed files to affected rule files via the metafile graph, and unload → rebuild → load per file; verify tests for edit, delete, add, helper-change and burst-of-saves scenarios
 - [x] 7.2 Implement `WATCH_POLL` (`auto` fallback to polling on native watch errors with a warning, forced polling, fallback disabled) and report the active mode in startup log and `/rules`; verify tests that simulate an `ENOSPC` watch error and assert a change is detected within 2 s via polling
-- [ ] 7.3 Implement the `HOT_RELOAD=false` switch and broken-edit behaviour (unload, log, recover on fix); verify the corresponding scenarios
+- [x] 7.3 Implement the `HOT_RELOAD=false` switch and broken-edit behaviour (unload, log, recover on fix); verify the corresponding scenarios
 
 ## 8. State and event triggers (rule-triggers)
 

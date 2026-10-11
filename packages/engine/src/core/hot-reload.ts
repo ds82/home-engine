@@ -24,12 +24,14 @@ export interface Watcher extends EventEmitter {
 export type WatchFactory = (path: string, options: ChokidarOptions) => Watcher;
 
 /** How the rules directory is watched right now. */
-export type WatchMode = "native" | "polling" | "unavailable";
+export type WatchMode = "native" | "polling" | "unavailable" | "disabled";
 
 export interface HotReloadOptions {
   rulesDir: string;
   loader: RuleLoader;
   log: Logger;
+  /** HOT_RELOAD; when false nothing is watched and rules change only on restart. */
+  enabled?: boolean;
   /** WATCH_POLL: `auto` (native, fall back to polling), `true` (always poll), `false` (never). */
   watchPoll?: WatchPollMode;
   /** Quiet period after the last file event before reloading. */
@@ -67,6 +69,13 @@ export class HotReloader {
 
   /** Starts watching; resolves once a watcher is ready (or hot reload is unavailable). */
   async start(): Promise<void> {
+    if (this.options.enabled === false) {
+      this.currentMode = "disabled";
+      this.options.log.info(
+        "Hot reload is disabled (HOT_RELOAD=false); rule changes apply on restart",
+      );
+      return;
+    }
     const poll = this.options.watchPoll ?? "auto";
     await this.startWatcher(poll === "true" ? "polling" : "native");
     this.options.log.info(
@@ -82,7 +91,7 @@ export class HotReloader {
     clearTimeout(this.timer);
     await this.watcher?.close();
     this.watcher = undefined;
-    this.currentMode = "unavailable";
+    if (this.currentMode !== "disabled") this.currentMode = "unavailable";
     await this.queue;
   }
 
