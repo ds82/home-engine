@@ -4,6 +4,7 @@ import type { SdkRuntime } from "../../core/sdk-runtime.js";
 import type { HaClient } from "./client.js";
 import type { HoldClock } from "./state-triggers.js";
 import { onChange, onEvent, onTrigger } from "./trigger-constructors.js";
+import { createHistory } from "./history.js";
 import { createStateHelpers } from "./state-helpers.js";
 import { createWaitFor } from "./wait-for.js";
 import { createWrites, type WritesOptions } from "./writes.js";
@@ -23,6 +24,7 @@ export function homeAssistantSdkRuntime(
       ? {
           waitFor: createWaitFor(client, clock),
           ...createStateHelpers(client.states),
+          ...createHistory(client, clock),
           ...(log ? createWrites(client, log, options) : {}),
         }
       : {}),

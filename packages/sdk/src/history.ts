@@ -1,0 +1,42 @@
+// History queries on Home Assistant's recorder. Points in time are a Date, an ISO 8601
+// string, or a duration meaning "that long ago" ("24h", "7d"); the end defaults to now.
+
+import type { EntityId } from "./entities.js";
+import { notInEngine } from "./stub.js";
+
+/** A point in time: a Date, an ISO 8601 string, or a duration ago such as `"24h"`. */
+export type TimeArg = Date | string;
+
+/** A recorded state and the time it took effect. */
+export interface HistoryEntry {
+  state: string;
+  at: Date;
+}
+
+/**
+ * The entity's recorded state changes in the range, oldest first. The first entry is the
+ * state in effect at `since` (dated `since`), if one is recorded.
+ */
+export function history(entity: EntityId, since: TimeArg, until?: TimeArg): Promise<HistoryEntry[]>;
+export function history(): Promise<HistoryEntry[]> {
+  return notInEngine("history");
+}
+
+/** The state in effect at `time`, or undefined if none is recorded. */
+export function stateAt(entity: EntityId, time: TimeArg): Promise<string | undefined>;
+export function stateAt(): Promise<string | undefined> {
+  return notInEngine("stateAt");
+}
+
+/**
+ * The most recent time the entity changed to `value` since `since` (default: local midnight),
+ * or undefined if it did not.
+ */
+export function lastChangedTo(
+  entity: EntityId,
+  value: string | number | boolean,
+  since?: TimeArg,
+): Promise<Date | undefined>;
+export function lastChangedTo(): Promise<Date | undefined> {
+  return notInEngine("lastChangedTo");
+}
