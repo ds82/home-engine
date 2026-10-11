@@ -3,6 +3,7 @@
 // logs) and registered with the safety net, so a failing write nobody awaited is logged as
 // a failed write of that rule instead of an anonymous unhandled rejection.
 
+import { logDryRun } from "../../core/dry-run.js";
 import { currentRun, invoke, requireRun } from "../../core/run-context.js";
 import { trackWrite } from "../../core/safety-net.js";
 import type { Logger } from "../../core/logger.js";
@@ -109,7 +110,16 @@ interface VirtualEntity {
   release: () => void;
 }
 
-export function createWrites(client: HaClient, log: Logger): Writes {
+export interface WritesOptions {
+  /** Log outgoing service calls, events and state writes instead of sending them. */
+  dryRun?: boolean;
+}
+
+export function createWrites(
+  client: HaClient,
+  log: Logger,
+  { dryRun = false }: WritesOptions = {},
+): Writes {
   /** The calling rule (or "-" outside rule code) and its logger. */
   const caller = (): { ruleId: string; log: Logger } => {
     const run = currentRun();
@@ -130,6 +140,10 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     const [domain = "", name = ""] = service.split(".");
     const { ruleId, log: ruleLog } = caller();
     const description = `${service}${target?.entity_id ? ` → ${[target.entity_id].flat().join(", ")}` : ""}`;
+    if (dryRun) {
+      logDryRun(ruleLog, ruleId, service, { service, target, data });
+      return Promise.resolve(options.returnResponse ? {} : undefined);
+    }
 
     const promise = (async () => {
       const session = client.connection.current;
@@ -196,6 +210,10 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     }
     const payload = jsonData("fire", "the event data", data);
     const { ruleId, log: ruleLog } = caller();
+    if (dryRun) {
+      logDryRun(ruleLog, ruleId, `fire ${eventType}`, { eventType, data: payload });
+      return Promise.resolve();
+    }
     const promise = (async () => {
       const session = client.connection.current;
       if (!session || !client.isReady) throw new NotConnectedError(`fire ${eventType}`);
@@ -279,9 +297,17 @@ export function createWrites(client: HaClient, log: Logger): Writes {
     }
     const value = String(state);
     const attrs = jsonData("setState", "the attributes", attributes);
+    const { ruleId, log: ruleLog } = caller();
+    if (dryRun) {
+      logDryRun(ruleLog, ruleId, `setState ${entity}`, {
+        entity,
+        state: value,
+        attributes: attrs,
+      });
+      return Promise.resolve();
+    }
     const run = currentRun();
     if (run) remember(run.scope, entity, value, attrs);
-    const { ruleId, log: ruleLog } = caller();
     ruleLog.debug({ entity, state: value, attributes: attrs }, `Setting ${entity} to ${value}`);
     return trackWrite(publishState(ruleId, entity, value, attrs), `setState ${entity}`);
   }

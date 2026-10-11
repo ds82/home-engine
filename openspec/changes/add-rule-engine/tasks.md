@@ -79,7 +79,7 @@
 - [x] 10.3 Implement `on`/`off` (skip when already in target state, debug log), `forceOn`/`forceOff`/`toggle` with `homeassistant.*` fallback, and `up`/`down` threshold positioning; verify tests asserting exactly which service calls reach the mock server
 - [x] 10.4 Implement `fire` and the raw WebSocket escape hatch; verify mock-server tests
 - [x] 10.5 Implement REST `setState` (incl. Supervisor base URL), virtual-entity tracking per rule and republish after reconnect; verify tests with a mock REST endpoint
-- [ ] 10.6 Implement dry-run interception for calls, events and state writes with rule attribution; verify a test asserting no outgoing message and a `[dry-run] <rule-id> <service>` info log
+- [x] 10.6 Implement dry-run interception for calls, events and state writes with rule attribution; verify a test asserting no outgoing message and a `[dry-run] <rule-id> <service>` info log
 - [ ] 10.7 Document state helpers, `on` vs `forceOn`, `up`/`down` (incl. HA position semantics vs. openHAB), virtual-entity limitations (incl. the `onStartup` + `store` pattern for values at boot) and dry-run in `docs/rules/actions.md`; verify code samples compile via the docs type-check script
 
 ## 11. History (ha-history)
