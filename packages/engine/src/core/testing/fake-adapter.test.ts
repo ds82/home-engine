@@ -10,7 +10,10 @@ function scope(ruleId: string): RuleScope & { dispose(): Promise<void> } {
   return {
     ruleId,
     signal: controller.signal,
-    onDispose: (fn) => disposers.push(fn),
+    onDispose: (fn) => {
+      disposers.push(fn);
+      return () => void disposers.splice(disposers.indexOf(fn), 1);
+    },
     async dispose() {
       controller.abort();
       for (const fn of disposers.reverse()) await fn();

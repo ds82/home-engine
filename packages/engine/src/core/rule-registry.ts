@@ -3,6 +3,7 @@
 // skips disabled ones, unloads them again, and reports status per rule and per file.
 
 import type { RuleDefinition } from "./registration.js";
+import type { RuleScopeImpl } from "./rule-scope.js";
 import { startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
 
 export type RuleStatus = "running" | "disabled" | "failed";
@@ -48,6 +49,8 @@ export function matchesRulePattern(pattern: string, ruleId: string): boolean {
 export class RuleRegistry {
   private readonly files = new Map<string, FileInfo>();
   private readonly rules = new Map<string, RuleEntry[]>();
+  /** Resources created at each file's top level (e.g. native timers). */
+  private readonly fileScopes = new Map<string, RuleScopeImpl>();
 
   constructor(
     private readonly runner: RunnerOptions,
@@ -59,13 +62,19 @@ export class RuleRegistry {
    * done with `unloadFile` first). If one of its explicit IDs is already used by another
    * file, the whole file fails and nothing of it starts.
    */
-  async loadFile(file: string, definitions: readonly RuleDefinition[]): Promise<void> {
+  async loadFile(
+    file: string,
+    definitions: readonly RuleDefinition[],
+    fileScope?: RuleScopeImpl,
+  ): Promise<void> {
     const loadedAt = new Date();
     const collision = this.findIdCollision(file, definitions);
     if (collision) {
+      await fileScope?.dispose();
       this.fileFailed(file, collision);
       return;
     }
+    if (fileScope) this.fileScopes.set(file, fileScope);
 
     const entries: RuleEntry[] = [];
     this.rules.set(file, entries);
@@ -98,9 +107,11 @@ export class RuleRegistry {
   /** Stops every rule of `file` and forgets the file. */
   async unloadFile(file: string): Promise<void> {
     const entries = this.rules.get(file) ?? [];
+    const fileScope = this.fileScopes.get(file);
     this.rules.delete(file);
     this.files.delete(file);
-    await Promise.all(entries.map((e) => e.started?.stop()));
+    this.fileScopes.delete(file);
+    await Promise.all([...entries.map((e) => e.started?.stop()), fileScope?.dispose()]);
   }
 
   /** Stops everything (engine shutdown). */

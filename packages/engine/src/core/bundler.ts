@@ -10,6 +10,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build, type Plugin } from "esbuild";
 import { SDK_RUNTIME_KEY, installedSdkRuntime } from "./sdk-runtime.js";
+import { TIMERS_KEY } from "./timers.js";
 
 export interface BundleResult {
   /** The written bundle. */
@@ -46,7 +47,9 @@ export async function bundleRuleFile(options: BundleOptions): Promise<BundleResu
     sourcesContent: true,
     metafile: true,
     logLevel: "silent",
-    plugins: [sdkPlugin()],
+    // Replaces setTimeout & co. in rule code (not in npm packages) with scoped versions.
+    inject: ["home-engine-timers"],
+    plugins: [sdkPlugin(), timersPlugin()],
   });
 
   const code = result.outputFiles[0]?.contents;
@@ -57,7 +60,7 @@ export async function bundleRuleFile(options: BundleOptions): Promise<BundleResu
   await writeFile(outfile, code);
 
   const inputs = Object.keys(result.metafile.inputs)
-    .filter((p) => !p.startsWith("home-engine-sdk:"))
+    .filter((p) => !p.startsWith("home-engine-"))
     .map((p) => resolve(rulesDir, p));
   return { outfile, inputs };
 }
@@ -88,6 +91,29 @@ function sdkPlugin(): Plugin {
         const contents = [
           `const sdk = globalThis[${key}];`,
           ...names.map((n) => `export const ${n} = sdk.${n};`),
+        ].join("\n");
+        return { contents, loader: "js" };
+      });
+    },
+  };
+}
+
+/** The injected module providing scoped timers from `globalThis[Symbol.for("home-engine.timers")]`. */
+function timersPlugin(): Plugin {
+  return {
+    name: "home-engine-timers",
+    setup(b) {
+      b.onResolve({ filter: /^home-engine-timers$/ }, () => ({
+        path: "timers",
+        namespace: "home-engine-timers",
+      }));
+      b.onLoad({ filter: /.*/, namespace: "home-engine-timers" }, () => {
+        const key = `Symbol.for(${JSON.stringify(TIMERS_KEY.description)})`;
+        const names = ["setTimeout", "setInterval", "clearTimeout", "clearInterval"];
+        const contents = [
+          `const timers = globalThis[${key}];`,
+          ...names.map((n) => `const ${n}_ = (...a) => timers.${n}(...a);`),
+          `export { ${names.map((n) => `${n}_ as ${n}`).join(", ")} };`,
         ].join("\n");
         return { contents, loader: "js" };
       });

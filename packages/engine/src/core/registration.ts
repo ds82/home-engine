@@ -12,6 +12,7 @@ import type {
   SetupOptions,
   Triggers,
 } from "@home-engine/sdk";
+import type { RuleScope } from "./rule-scope.js";
 
 export interface TriggeredRuleDefinition {
   kind: "triggered";
@@ -58,12 +59,19 @@ export const EVALUATION_TIMEOUT_MS = 30_000;
 
 interface FileRegistry {
   file: string;
+  /** Owns resources created at the file's top level (e.g. native timers). */
+  scope: RuleScope | undefined;
   rules: RuleDefinition[];
   names: Set<string>;
 }
 
 /** The file currently being evaluated. Only one at a time. */
 let current: FileRegistry | undefined;
+
+/** The scope of the file being evaluated, if any (for resources created at top level). */
+export function currentFileScope(): RuleScope | undefined {
+  return current?.scope;
+}
 
 /** `lights/hallway.ts` → `lights/hallway` (always with `/` separators). */
 export function fileIdBase(file: string): string {
@@ -78,14 +86,18 @@ export function fileIdBase(file: string): string {
 export async function evaluateFile(
   file: string,
   evaluate: () => Promise<unknown>,
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    /** Receives resources created at the file's top level; disposed if evaluation fails. */
+    fileScope?: RuleScope & { dispose(): Promise<void> };
+  } = {},
 ): Promise<RuleDefinition[]> {
   if (current) {
     throw new Error(
       `Cannot evaluate ${file} while ${current.file} is being evaluated; files load one at a time.`,
     );
   }
-  const registry: FileRegistry = { file, rules: [], names: new Set() };
+  const registry: FileRegistry = { file, scope: options.fileScope, rules: [], names: new Set() };
   current = registry;
   const timeoutMs = options.timeoutMs ?? EVALUATION_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -106,6 +118,7 @@ export async function evaluateFile(
       }),
     ]);
   } catch (err) {
+    await options.fileScope?.dispose();
     if (err instanceof FileEvaluationError) throw err;
     throw new FileEvaluationError(file, `Loading ${file} failed: ${errorMessage(err)}`, {
       cause: err,

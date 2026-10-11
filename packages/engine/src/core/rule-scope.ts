@@ -12,9 +12,10 @@ export interface RuleScope {
   readonly signal: AbortSignal;
   /**
    * Registers an internal cleanup that runs when the rule is unloaded, after user teardowns
-   * and the abort (newest first). Registered after unload, it runs immediately.
+   * and the abort (newest first). Registered after unload, it runs immediately. Returns a
+   * function that unregisters it (for resources released earlier, like a fired timer).
    */
-  onDispose(dispose: () => void | Promise<void>): void;
+  onDispose(dispose: () => void | Promise<void>): () => void;
 }
 
 /** Abort reason for an unloaded rule; treated like an AbortError by the engine. */
@@ -31,7 +32,7 @@ export class RuleScopeImpl implements RuleScope {
   readonly log: Logger;
   private readonly controller = new AbortController();
   private readonly teardowns: Cleanup[] = [];
-  private readonly disposers: Cleanup[] = [];
+  private readonly disposers = new Set<Cleanup>();
   private disposing: Promise<void> | undefined;
 
   /** Time the last run started. */
@@ -57,18 +58,23 @@ export class RuleScopeImpl implements RuleScope {
   /** A user teardown (SDK `onDispose()` or the function a setup function returns). */
   addTeardown(teardown: Cleanup): void {
     if (this.disposed) {
-      this.runSafely(teardown, "teardown");
+      void this.runSafely(teardown, "teardown");
       return;
     }
     this.teardowns.push(teardown);
   }
 
-  onDispose(dispose: Cleanup): void {
+  onDispose(dispose: Cleanup): () => void {
     if (this.disposed) {
-      this.runSafely(dispose, "cleanup");
-      return;
+      void this.runSafely(dispose, "cleanup");
+      return () => {};
     }
-    this.disposers.push(dispose);
+    // Wrapped so registering the same function twice yields two independent entries.
+    const entry: Cleanup = () => dispose();
+    this.disposers.add(entry);
+    return () => {
+      this.disposers.delete(entry);
+    };
   }
 
   /** Unloads the rule. Safe to call more than once; later calls await the first. */
@@ -86,7 +92,9 @@ export class RuleScopeImpl implements RuleScope {
       await this.runSafely(teardown, "teardown");
     }
     this.controller.abort(new RuleUnloadedError(this.ruleId));
-    for (const dispose of this.disposers.splice(0).reverse()) {
+    const disposers = [...this.disposers].reverse();
+    this.disposers.clear();
+    for (const dispose of disposers) {
       await this.runSafely(dispose, "cleanup");
     }
   }
