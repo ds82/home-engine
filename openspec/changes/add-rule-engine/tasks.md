@@ -11,7 +11,7 @@
 
 - [x] 2.1 Implement config loading from env with defaults, `_FILE` secret variants, Supervisor detection and aggregated validation errors; verify unit tests for every scenario in `specs/engine-config/spec.md`
 - [x] 2.2 Implement redacted effective-config startup logging; verify a test asserting the token never appears in output
-- [ ] 2.3 Document all environment variables in `README.md` (table with default and description); verify the table matches the config schema via a test that compares documented names with the schema keys
+- [x] 2.3 Document all environment variables in `README.md` (table with default and description); verify the table matches the config schema via a test that compares documented names with the schema keys
 
 ## 3. Logging (engine-observability, part 1)
 
