@@ -36,7 +36,16 @@ export type {
   TimerHandle,
 } from "./rules.js";
 export { listen, rule, setup } from "./rules.js";
-export { history, lastChangedTo, stateAt, type HistoryEntry, type TimeArg } from "./history.js";
+export {
+  averageSince,
+  history,
+  lastChangedTo,
+  maximumSince,
+  minimumSince,
+  stateAt,
+  type HistoryEntry,
+  type TimeArg,
+} from "./history.js";
 export {
   getEntities,
   getEntity,

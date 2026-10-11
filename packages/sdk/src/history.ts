@@ -40,3 +40,37 @@ export function lastChangedTo(
 export function lastChangedTo(): Promise<Date | undefined> {
   return notInEngine("lastChangedTo");
 }
+
+/**
+ * Time-weighted average of the entity's numeric states over the range. Non-numeric states
+ * (`unknown`, `unavailable`) are left out; undefined if there is no numeric state. Ranges
+ * older than the recorder's history are filled from long-term statistics.
+ */
+export function averageSince(
+  entity: EntityId,
+  since: TimeArg,
+  until?: TimeArg,
+): Promise<number | undefined>;
+export function averageSince(): Promise<number | undefined> {
+  return notInEngine("averageSince");
+}
+
+/** Lowest numeric state over the range; undefined if there is none. */
+export function minimumSince(
+  entity: EntityId,
+  since: TimeArg,
+  until?: TimeArg,
+): Promise<number | undefined>;
+export function minimumSince(): Promise<number | undefined> {
+  return notInEngine("minimumSince");
+}
+
+/** Highest numeric state over the range; undefined if there is none. */
+export function maximumSince(
+  entity: EntityId,
+  since: TimeArg,
+  until?: TimeArg,
+): Promise<number | undefined>;
+export function maximumSince(): Promise<number | undefined> {
+  return notInEngine("maximumSince");
+}
