@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  check:
+    runs-on: docker
+    container:
+      # Keep in sync with .nvmrc.
+      image: node:24
+    steps:
+      - name: Checkout
+        run: |
+          SERVER=$(echo "${{ github.server_url }}" | sed 's|https\?://||')
+          git clone --depth 1 --branch "${{ github.ref_name }}" \
+            "https://x-token:${{ secrets.GITHUB_TOKEN }}@$SERVER/${{ github.repository }}.git" .
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
