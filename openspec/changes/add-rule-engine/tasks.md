@@ -61,7 +61,7 @@
 - [x] 8.4 Implement `onEvent` with recursive partial data filters (literal/array/predicate leaves), `onTrigger` (native HA triggers; a rejected config keeps the rule `running`, records the error on the trigger and as last error) and `onStartup` (fires on start/reload/re-enable, not on reconnect; in `listen()` only during setup); verify with mock-server tests
 - [x] 8.5 Implement `waitFor` (filter, optional `for`, resolves `undefined` on timeout, rejects only on unload/run abort); verify resolve, timeout, already-matching and unload scenarios
 - [x] 8.6 Implement `causedBy`/`causedByEngine` (engine user ID) and `causedByRule` (context-ID map from call results, direct context ID only, no `parent_id`, bounded hold of engine-user events with unknown context); verify the feedback-loop, other-rule and manual-change scenarios, including a mock server that sends `state_changed` before the call result
-- [ ] 8.7 Document triggers, typed events (incl. change cause, resynced and restored events), hold restoration, `listen()` in setup rules, `waitFor` and concurrency modes in `docs/rules/triggers.md`; verify code samples compile via the docs type-check script
+- [x] 8.7 Document triggers, typed events (incl. change cause, resynced and restored events), hold restoration, `listen()` in setup rules, `waitFor` and concurrency modes in `docs/rules/triggers.md`; verify code samples compile via the docs type-check script
 
 ## 9. Scheduler (rule-scheduler)
 
