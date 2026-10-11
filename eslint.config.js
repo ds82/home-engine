@@ -12,5 +12,23 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    // The core is backend-neutral: it talks to backends only through the adapter interface.
+    files: ["packages/engine/src/core/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/adapters", "**/adapters/**"],
+              message:
+                "core must not import from adapters; depend on the adapter interface instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 );
