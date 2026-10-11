@@ -24,7 +24,7 @@ export function homeAssistantSdkRuntime(
       ? {
           waitFor: createWaitFor(client, clock),
           ...createStateHelpers(client.states),
-          ...createHistory(client, clock),
+          ...createHistory(client, clock, log),
           ...(log ? createWrites(client, log, options) : {}),
         }
       : {}),

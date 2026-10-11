@@ -74,3 +74,51 @@ export function maximumSince(
 export function maximumSince(): Promise<number | undefined> {
   return notInEngine("maximumSince");
 }
+
+/**
+ * How much a cumulative sensor (state class `total` or `total_increasing`, e.g. an energy
+ * meter) rose over the range, from Home Assistant's hourly statistics, which account for meter
+ * resets. Counts from the first full hour after `since`; when the range ends now, the current
+ * hour is added from the live reading. Undefined without statistics.
+ */
+export function changeSince(
+  entity: EntityId,
+  since: TimeArg,
+  until?: TimeArg,
+): Promise<number | undefined>;
+export function changeSince(): Promise<number | undefined> {
+  return notInEngine("changeSince");
+}
+
+export type StatisticPeriod = "5minute" | "hour" | "day" | "week" | "month";
+export type StatisticType = "mean" | "min" | "max" | "sum" | "state" | "change";
+
+export interface StatisticsOptions {
+  since: TimeArg;
+  until?: TimeArg;
+  /** Default `hour`. */
+  period?: StatisticPeriod;
+  /** Default `mean`, `min` and `max`. */
+  types?: readonly StatisticType[];
+}
+
+/** One period of long-term statistics; only the requested types are present. */
+export interface StatisticsEntry {
+  start: Date;
+  end: Date;
+  mean?: number;
+  min?: number;
+  max?: number;
+  sum?: number;
+  state?: number;
+  change?: number;
+}
+
+/** Home Assistant's long-term statistics for a statistic ID (usually the entity ID). */
+export function statistics(
+  statisticId: EntityId | `${string}:${string}`,
+  options: StatisticsOptions,
+): Promise<StatisticsEntry[]>;
+export function statistics(): Promise<StatisticsEntry[]> {
+  return notInEngine("statistics");
+}

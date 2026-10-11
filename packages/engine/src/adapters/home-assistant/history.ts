@@ -1,12 +1,16 @@
 // History queries (ha-history; design D15) on Home Assistant's recorder:
-// `history/history_during_period` for `history`, `stateAt` and `lastChangedTo`.
+// `history/history_during_period` for `history`, `stateAt`, `lastChangedTo` and the
+// aggregates, `recorder/statistics_during_period` for `statistics` and `changeSince`.
 // Points in time are a Date, an ISO 8601 string, or a duration meaning "that long ago".
 
 import { parseDuration } from "../../core/duration.js";
 import { nextLocalTime } from "../../core/scheduling.js";
+import type { Logger } from "../../core/logger.js";
+import { currentRun } from "../../core/run-context.js";
 import type { Clock } from "../../core/timer.js";
 import { realClock } from "../../core/timer.js";
 import type { HaClient } from "./client.js";
+import { HaCommandError } from "./session.js";
 import { NotConnectedError } from "./writes.js";
 
 /** A recorded state and the time it took effect. */
@@ -28,6 +32,45 @@ export interface HistoryQueries {
   averageSince(entity: string, since: TimeArg, until?: TimeArg): Promise<number | undefined>;
   minimumSince(entity: string, since: TimeArg, until?: TimeArg): Promise<number | undefined>;
   maximumSince(entity: string, since: TimeArg, until?: TimeArg): Promise<number | undefined>;
+  changeSince(entity: string, since: TimeArg, until?: TimeArg): Promise<number | undefined>;
+  statistics(statisticId: string, options: StatisticsOptions): Promise<StatisticsEntry[]>;
+}
+
+export const STATISTIC_PERIODS = ["5minute", "hour", "day", "week", "month"] as const;
+export const STATISTIC_TYPES = ["mean", "min", "max", "sum", "state", "change"] as const;
+export type StatisticPeriod = (typeof STATISTIC_PERIODS)[number];
+export type StatisticType = (typeof STATISTIC_TYPES)[number];
+
+export interface StatisticsOptions {
+  since: TimeArg;
+  until?: TimeArg;
+  /** Default `hour`. */
+  period?: StatisticPeriod;
+  /** Default `mean`, `min` and `max`. */
+  types?: readonly StatisticType[];
+}
+
+/** One period of long-term statistics; only the requested types are present. */
+export interface StatisticsEntry {
+  start: Date;
+  end: Date;
+  mean?: number;
+  min?: number;
+  max?: number;
+  sum?: number;
+  state?: number;
+  change?: number;
+}
+
+/** Home Assistant has no recorder, so there is no history to query. */
+export class RecorderMissingError extends Error {
+  constructor(what: string) {
+    super(
+      `${what}: history needs Home Assistant's recorder integration, which is not loaded ` +
+        `(add "recorder:" or "default_config:" to configuration.yaml)`,
+    );
+    this.name = "RecorderMissingError";
+  }
 }
 
 /**
@@ -79,6 +122,9 @@ interface StatisticsRow {
   mean?: number | null;
   min?: number | null;
   max?: number | null;
+  sum?: number | null;
+  state?: number | null;
+  change?: number | null;
 }
 
 const epochMs = (t: number | string): number => (typeof t === "number" ? t : Date.parse(t));
@@ -133,25 +179,60 @@ export function localMidnight(now: number, timeZone: string | undefined): number
   }
 }
 
-export function createHistory(client: HaClient, clock: Clock = realClock): HistoryQueries {
+export function createHistory(
+  client: HaClient,
+  clock: Clock = realClock,
+  log?: Logger,
+): HistoryQueries {
+  /** Sends a recorder command; a missing recorder becomes a RecorderMissingError. */
+  async function recorder<T>(what: string, message: Record<string, unknown> & { type: string }) {
+    const session = client.connection.current;
+    if (!session || !client.isReady) throw new NotConnectedError(what);
+    try {
+      return await session.command<T>(message);
+    } catch (err) {
+      if (err instanceof HaCommandError && err.code === "unknown_command") {
+        throw new RecorderMissingError(what);
+      }
+      throw err;
+    }
+  }
+
+  // Entities without recorded data: warned about once per entity and rule.
+  const warned = new Set<string>();
+  const warnOnce = (entity: string, message: string): void => {
+    const run = currentRun();
+    const key = `${run?.scope.ruleId ?? "-"}\0${entity}`;
+    if (warned.has(key)) return;
+    warned.add(key);
+    (run?.scope.log ?? log)?.warn({ entity }, message);
+  };
+
   /**
    * State changes of `entity` in [start, end), oldest first. The first entry is the state in
    * effect at `start` (if recorded), dated `start`. Rows that repeat the previous state
    * (attribute-only updates) are dropped.
    */
   async function query(entity: string, start: number, end: number): Promise<HistoryEntry[]> {
-    const session = client.connection.current;
-    if (!session || !client.isReady) throw new NotConnectedError(`history of ${entity}`);
-    const result = await session.command<Record<string, CompressedRow[] | undefined>>({
-      type: "history/history_during_period",
-      start_time: new Date(start).toISOString(),
-      end_time: new Date(end).toISOString(),
-      entity_ids: [entity],
-      include_start_time_state: true,
-      significant_changes_only: false,
-      minimal_response: true,
-      no_attributes: true,
-    });
+    const result = await recorder<Record<string, CompressedRow[] | undefined>>(
+      `history of ${entity}`,
+      {
+        type: "history/history_during_period",
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+        entity_ids: [entity],
+        include_start_time_state: true,
+        significant_changes_only: false,
+        minimal_response: true,
+        no_attributes: true,
+      },
+    );
+    if (!result[entity]?.length) {
+      warnOnce(
+        entity,
+        `${entity} has no recorded history; it is unknown or excluded from the recorder`,
+      );
+    }
     const entries: HistoryEntry[] = [];
     for (const row of result[entity] ?? []) {
       if (entries.at(-1)?.state === row.s) continue;
@@ -167,20 +248,11 @@ export function createHistory(client: HaClient, clock: Clock = realClock): Histo
     start: number,
     end: number,
   ): Promise<Segment[]> {
-    const session = client.connection.current;
-    if (!session || !client.isReady) throw new NotConnectedError(`statistics of ${entity}`);
     // Hourly rows start on the hour: begin at the hour containing `start`.
     const from = Math.floor(start / 3_600_000) * 3_600_000;
-    const result = await session.command<Record<string, StatisticsRow[] | undefined>>({
-      type: "recorder/statistics_during_period",
-      start_time: new Date(from).toISOString(),
-      end_time: new Date(end).toISOString(),
-      statistic_ids: [entity],
-      period: "hour",
-      types: ["mean", "min", "max"],
-    });
+    const rows = await statisticsRows(entity, from, end, "hour", ["mean", "min", "max"]);
     const segments: Segment[] = [];
-    for (const row of result[entity] ?? []) {
+    for (const row of rows) {
       const { mean, min, max } = row;
       if (typeof mean !== "number" || typeof min !== "number" || typeof max !== "number") continue;
       const segFrom = Math.max(start, epochMs(row.start));
@@ -209,6 +281,23 @@ export function createHistory(client: HaClient, clock: Clock = realClock): Histo
     return segments;
   }
 
+  function statisticsRows(
+    statisticId: string,
+    start: number,
+    end: number,
+    period: StatisticPeriod,
+    types: readonly StatisticType[],
+  ): Promise<StatisticsRow[]> {
+    return recorder<Record<string, StatisticsRow[] | undefined>>(`statistics of ${statisticId}`, {
+      type: "recorder/statistics_during_period",
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
+      statistic_ids: [statisticId],
+      period,
+      types: [...types],
+    }).then((result) => result[statisticId] ?? []);
+  }
+
   const aggregateFn =
     (fn: string, pick: keyof Aggregates) =>
     (entity: string, since: TimeArg, until?: TimeArg): Promise<number | undefined> => {
@@ -226,6 +315,86 @@ export function createHistory(client: HaClient, clock: Clock = realClock): Histo
   };
 
   return {
+    statistics(statisticId, options) {
+      if (typeof statisticId !== "string" || !/^[a-z0-9_]+[.:][a-z0-9_]+$/.test(statisticId)) {
+        throw new TypeError(`statistics(): ${JSON.stringify(statisticId)} is not a statistic ID`);
+      }
+      if (typeof options !== "object" || options === null) {
+        throw new TypeError(`statistics(): pass options such as { since: "30d", period: "day" }`);
+      }
+      const period = options.period ?? "hour";
+      if (!STATISTIC_PERIODS.includes(period)) {
+        throw new TypeError(
+          `statistics(): period ${JSON.stringify(period)} is not one of ${STATISTIC_PERIODS.join(", ")}`,
+        );
+      }
+      const types = options.types ?? ["mean", "min", "max"];
+      const unknown = types.find((t) => !STATISTIC_TYPES.includes(t));
+      if (unknown !== undefined || types.length === 0) {
+        throw new TypeError(
+          `statistics(): types must be some of ${STATISTIC_TYPES.join(", ")}` +
+            (unknown === undefined ? "" : `, not ${JSON.stringify(unknown)}`),
+        );
+      }
+      const { start, end } = range("statistics", options.since, options.until);
+      return statisticsRows(statisticId, start, end, period, types).then((rows) => {
+        if (rows.length === 0) {
+          warnOnce(
+            statisticId,
+            `${statisticId} has no long-term statistics; it needs a state_class and must be recorded`,
+          );
+        }
+        return rows.map((row) => {
+          const entry: StatisticsEntry = {
+            start: new Date(epochMs(row.start)),
+            end: new Date(epochMs(row.end)),
+          };
+          for (const type of types) {
+            const value = row[type];
+            if (typeof value === "number") entry[type] = value;
+          }
+          return entry;
+        });
+      });
+    },
+
+    /**
+     * Sums the hourly `change` statistics (which account for meter resets) from the first
+     * full hour after `since`. When the range ends now, the current, not yet compiled hour is
+     * added from the live state: its rise since the last hourly reading, or the whole reading
+     * after a reset.
+     */
+    async changeSince(entity, since, until) {
+      checkEntity("changeSince", entity);
+      const { start, end } = range("changeSince", since, until);
+      const from = Math.ceil(start / 3_600_000) * 3_600_000;
+      const rows =
+        from < end ? await statisticsRows(entity, from, end, "hour", ["change", "state"]) : [];
+      const withChange = rows.filter((r) => typeof r.change === "number");
+      if (withChange.length === 0 && until !== undefined) {
+        warnOnce(entity, `${entity} has no long-term statistics; changeSince needs a state_class`);
+        return undefined;
+      }
+      let total = withChange.reduce((sum, r) => sum + (r.change as number), 0);
+      if (until === undefined) {
+        const last = rows.at(-1);
+        const live = numericState(client.states.get(entity)?.state ?? "");
+        const lastReading = typeof last?.state === "number" ? last.state : undefined;
+        if (live === undefined || lastReading === undefined) {
+          if (withChange.length === 0) {
+            warnOnce(
+              entity,
+              `${entity} has no long-term statistics; changeSince needs a state_class`,
+            );
+            return undefined;
+          }
+          return total;
+        }
+        total += live >= lastReading ? live - lastReading : live;
+      }
+      return total;
+    },
+
     averageSince: aggregateFn("averageSince", "average"),
     minimumSince: aggregateFn("minimumSince", "minimum"),
     maximumSince: aggregateFn("maximumSince", "maximum"),

@@ -38,12 +38,18 @@ export type {
 export { listen, rule, setup } from "./rules.js";
 export {
   averageSince,
+  changeSince,
   history,
   lastChangedTo,
   maximumSince,
   minimumSince,
   stateAt,
+  statistics,
   type HistoryEntry,
+  type StatisticPeriod,
+  type StatisticsEntry,
+  type StatisticsOptions,
+  type StatisticType,
   type TimeArg,
 } from "./history.js";
 export {
