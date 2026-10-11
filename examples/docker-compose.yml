@@ -1,0 +1,24 @@
+# home-engine quick start. Next to this file:
+#   rules/   your rule files (start with the examples)
+#   .env     HA_URL=http://homeassistant.local:8123
+#            HA_TOKEN=<long-lived access token from your Home Assistant profile>
+# Then: docker compose up -d && docker compose logs -f
+services:
+  home-engine:
+    image: ${HOME_ENGINE_IMAGE:-ghcr.io/home-engine/home-engine:latest}
+    restart: unless-stopped
+    environment:
+      HA_URL: ${HA_URL:?set HA_URL in .env}
+      HA_TOKEN: ${HA_TOKEN:?set HA_TOKEN in .env}
+      # Optional: LOG_LEVEL (info), LOG_FORMAT (pretty), DRY_RUN (false), DISABLED_RULES, TIME_ZONE.
+    volumes:
+      # The engine never writes to /rules; it may be read-only.
+      - ./rules:/rules:ro
+      # Storage, installed rule dependencies and build caches.
+      - home-engine-data:/data
+    ports:
+      # Health and status endpoints: /health/live, /health/ready, /rules.
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  home-engine-data:

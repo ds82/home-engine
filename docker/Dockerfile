@@ -15,7 +15,7 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/engine/package.json packages/engine/
 COPY packages/typegen/package.json packages/typegen/
-COPY examples/rules/package.json examples/rules/
+COPY examples/package.json examples/
 RUN npm ci --no-audit --no-fund
 COPY packages packages
 RUN npm run build --workspace packages/sdk --workspace packages/engine --workspace packages/typegen

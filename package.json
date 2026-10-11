@@ -7,7 +7,7 @@
     "packages/sdk",
     "packages/engine",
     "packages/typegen",
-    "examples/rules"
+    "examples"
   ],
   "engines": {
     "node": ">=24"
