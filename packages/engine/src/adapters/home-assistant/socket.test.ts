@@ -1,54 +1,15 @@
-import { Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { FatalError } from "../../core/errors.js";
-import { createLogger } from "../../core/logger.js";
-import type { HomeAssistantConfig } from "./config.js";
-import {
-  AuthInvalidError,
-  ConnectError,
-  connectAtStartup,
-  openAuthenticatedSocket,
-} from "./socket.js";
+import { AuthInvalidError, ConnectError, openAuthenticatedSocket } from "./socket.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
-
-const TOKEN = "eyJ0eXAiOiJKV1Qi.long-lived-token-abc123";
-
-function logCapture(secrets: string[] = [TOKEN]) {
-  let out = "";
-  const destination = new Writable({
-    write(chunk: Buffer | string, _e, cb) {
-      out += chunk.toString();
-      cb();
-    },
-  });
-  const log = createLogger({ level: "trace", format: "json", secrets, destination });
-  return {
-    log,
-    text: () => out,
-    entries: () =>
-      out
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((l) => JSON.parse(l) as Record<string, unknown>),
-  };
-}
+import { TOKEN, logCapture } from "./testing/log-capture.js";
 
 describe("Home Assistant auth handshake", () => {
   let ha: MockHomeAssistant;
-  let config: HomeAssistantConfig;
   const sockets: WebSocket[] = [];
 
   beforeEach(async () => {
     ha = new MockHomeAssistant({ tokens: [TOKEN], version: "2026.10.1" });
     await ha.start();
-    config = {
-      baseUrl: ha.url,
-      wsUrl: ha.wsUrl,
-      restUrl: `${ha.url}/api`,
-      token: TOKEN,
-      supervisor: false,
-    };
   });
 
   afterEach(async () => {
@@ -56,33 +17,19 @@ describe("Home Assistant auth handshake", () => {
     await ha.stop();
   });
 
-  it("authenticates on auth_ok and logs the Home Assistant version", async () => {
-    const { log, entries } = logCapture();
-    const { ws, haVersion } = await connectAtStartup(config, log);
+  it("resolves with the open socket and Home Assistant version on auth_ok", async () => {
+    const { log } = logCapture();
+    const { ws, haVersion } = await openAuthenticatedSocket({ wsUrl: ha.wsUrl, token: TOKEN, log });
     sockets.push(ws);
     expect(haVersion).toBe("2026.10.1");
     expect(ws.readyState).toBe(WebSocket.OPEN);
-    expect(ha.connectionCount).toBe(1);
-    expect(entries()).toContainEqual(
-      expect.objectContaining({ level: "info", message: "Connected to Home Assistant 2026.10.1" }),
-    );
   });
 
-  it("fails fatally with a non-zero exit code on auth_invalid at startup, without logging the token", async () => {
-    const { log, text, entries } = logCapture(["wrong-token-xyz"]);
-    const err = await connectAtStartup({ ...config, token: "wrong-token-xyz" }, log).catch(
-      (e: unknown) => e,
-    );
-    expect(err).toBeInstanceOf(FatalError);
-    expect((err as FatalError).exitCode).not.toBe(0);
-    expect((err as FatalError).cause).toBeInstanceOf(AuthInvalidError);
-    expect(entries()).toContainEqual(
-      expect.objectContaining({
-        level: "error",
-        message: expect.stringMatching(/Authentication .* failed/),
-      }),
-    );
-    expect(text()).not.toContain("wrong-token-xyz");
+  it("rejects with AuthInvalidError on auth_invalid", async () => {
+    const { log } = logCapture();
+    await expect(
+      openAuthenticatedSocket({ wsUrl: ha.wsUrl, token: "wrong", log }),
+    ).rejects.toBeInstanceOf(AuthInvalidError);
   });
 
   it("never logs the token, even at trace level", async () => {
@@ -93,12 +40,12 @@ describe("Home Assistant auth handshake", () => {
     expect(text()).not.toContain(TOKEN);
   });
 
-  it("treats an unreachable Home Assistant as a non-fatal connect error", async () => {
+  it("rejects with ConnectError when Home Assistant is unreachable", async () => {
     const { log } = logCapture();
     await ha.stop();
-    const err = await connectAtStartup(config, log).catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(ConnectError);
-    expect(err).not.toBeInstanceOf(FatalError);
+    await expect(
+      openAuthenticatedSocket({ wsUrl: ha.wsUrl, token: TOKEN, log }),
+    ).rejects.toBeInstanceOf(ConnectError);
   });
 
   it("times out when Home Assistant never sends auth_required", async () => {

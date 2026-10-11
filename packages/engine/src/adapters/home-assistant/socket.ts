@@ -1,9 +1,7 @@
 // Opening a WebSocket to Home Assistant and completing the auth handshake
 // (auth_required → auth → auth_ok | auth_invalid), on Node's native WebSocket.
 
-import { FatalError } from "../../core/errors.js";
 import type { Logger } from "../../core/logger.js";
-import type { HomeAssistantConfig } from "./config.js";
 
 /** Home Assistant rejected the access token. */
 export class AuthInvalidError extends Error {
@@ -103,37 +101,4 @@ export function openAuthenticatedSocket(options: OpenOptions): Promise<Authentic
     ws.addEventListener("close", onClose);
     ws.addEventListener("error", onError);
   });
-}
-
-/**
- * The first connection at engine startup. An invalid token is fatal here (the operator must
- * fix the configuration); network errors are not, and are retried by the caller.
- */
-export async function connectAtStartup(
-  config: HomeAssistantConfig,
-  log: Logger,
-  signal?: AbortSignal,
-): Promise<AuthenticatedSocket> {
-  try {
-    const socket = await openAuthenticatedSocket({
-      wsUrl: config.wsUrl,
-      token: config.token,
-      log,
-      ...(signal ? { signal } : {}),
-    });
-    log.info(
-      { haVersion: socket.haVersion, url: config.wsUrl },
-      `Connected to Home Assistant ${socket.haVersion}`,
-    );
-    return socket;
-  } catch (err) {
-    if (err instanceof AuthInvalidError) {
-      log.error(
-        { url: config.wsUrl, reason: err.message },
-        "Authentication with Home Assistant failed; check HA_TOKEN",
-      );
-      throw new FatalError(err.message, 1, { cause: err });
-    }
-    throw err;
-  }
 }
