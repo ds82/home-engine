@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HaClient } from "./client.js";
 import { FakeDelay } from "./testing/fake-delay.js";
-import { TOKEN, logCapture } from "./testing/log-capture.js";
+import { TOKEN, logCapture } from "../../core/testing/log-capture.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 
 describe("HaClient status and Site", () => {

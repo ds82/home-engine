@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AuthInvalidError, ConnectError, openAuthenticatedSocket } from "./socket.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
-import { TOKEN, logCapture } from "./testing/log-capture.js";
+import { TOKEN, logCapture } from "../../core/testing/log-capture.js";
 
 describe("Home Assistant auth handshake", () => {
   let ha: MockHomeAssistant;

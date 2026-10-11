@@ -3,7 +3,7 @@ import { FatalError } from "../../core/errors.js";
 import type { HomeAssistantConfig } from "./config.js";
 import { BACKOFF_MAX_MS, HaConnection, backoffDelay } from "./connection.js";
 import { FakeDelay } from "./testing/fake-delay.js";
-import { TOKEN, logCapture } from "./testing/log-capture.js";
+import { TOKEN, logCapture } from "../../core/testing/log-capture.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 
 describe("backoffDelay", () => {

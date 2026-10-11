@@ -1,7 +1,7 @@
 // A trace-level JSON logger that captures its output, for asserting on log lines.
 
 import { Writable } from "node:stream";
-import { createLogger, type Logger } from "../../../core/logger.js";
+import { createLogger, type Logger } from "../logger.js";
 
 export const TOKEN = "eyJ0eXAiOiJKV1Qi.long-lived-token-abc123";
 

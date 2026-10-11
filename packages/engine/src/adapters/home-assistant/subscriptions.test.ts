@@ -4,7 +4,7 @@ import { HaConnection } from "./connection.js";
 import { HaCommandError } from "./session.js";
 import { SubscriptionRegistry, type HaEvent } from "./subscriptions.js";
 import { FakeDelay } from "./testing/fake-delay.js";
-import { TOKEN, logCapture } from "./testing/log-capture.js";
+import { TOKEN, logCapture } from "../../core/testing/log-capture.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 
 describe("SubscriptionRegistry", () => {
