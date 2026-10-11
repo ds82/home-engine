@@ -7,6 +7,7 @@
 import type { StateTrigger, ValueFilter } from "@home-engine/sdk";
 import type { Disposable } from "../../core/adapter.js";
 import { parseDuration } from "../../core/duration.js";
+import { realClock, type Clock } from "../../core/timer.js";
 import type { FiredHolds } from "../../core/fired-holds.js";
 import type { ArmContext, EventPayload, TriggerSource } from "../../core/trigger-source.js";
 import type { WriteAttribution } from "./attribution.js";
@@ -121,32 +122,9 @@ export function globToRegex(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
-/** Time for holds; injectable so tests can advance it deterministically. */
-export interface HoldClock {
-  now(): number;
-  /** Runs `fn` after `ms`; returns a cancel function. */
-  setTimeout(fn: () => void, ms: number): () => void;
-}
-
-/** setTimeout cannot wait longer than ~24.8 days; longer holds re-arm in steps. */
-const MAX_TIMEOUT_MS = 2_147_483_647;
-
-export const realClock: HoldClock = {
-  now: () => Date.now(),
-  setTimeout(fn, ms) {
-    const target = Date.now() + ms;
-    let timer: ReturnType<typeof setTimeout>;
-    const arm = (): void => {
-      const remaining = target - Date.now();
-      timer =
-        remaining > MAX_TIMEOUT_MS
-          ? setTimeout(arm, MAX_TIMEOUT_MS)
-          : setTimeout(fn, Math.max(0, remaining));
-    };
-    arm();
-    return () => clearTimeout(timer);
-  },
-};
+/** Time for holds; the core's drift-proof clock, injectable so tests can advance it. */
+export type HoldClock = Clock;
+export { realClock };
 
 /** Whether the client is connected and synchronised; holds wait for it before firing. */
 export interface ConnectionState {
