@@ -72,6 +72,7 @@ For editor completion of your entity IDs, see [typings](docs/rules/typings.md).
 | [Typings](docs/rules/typings.md)                          | generated types for your entities and services                 |
 | [Coming from openHAB](docs/migrating-from-openhab.md)     | `@ds82/openhab` and openHAB JS rules side by side              |
 | [Coming from AppDaemon](docs/migrating-from-appdaemon.md) | AppDaemon apps side by side                                    |
+| [Performance](docs/performance.md)                        | load test and measured latency                                 |
 
 ## Configuration
 
