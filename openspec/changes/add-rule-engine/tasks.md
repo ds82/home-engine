@@ -21,7 +21,7 @@
 
 - [x] 4.1 Define the `BackendAdapter` interface in core (config, start/stop, status, site info, `createRuleApi(scope)`) and an in-memory fake adapter for core tests; verify typecheck passes with the fake adapter implementing the interface
 - [x] 4.2 Implement URL derivation (http→ws, https→wss, Supervisor URL) and the auth handshake; verify tests for `auth_ok`, `auth_invalid` at startup (non-zero exit) and token redaction
-- [ ] 4.3 Implement request/response correlation with per-request timeouts and rejection of pending requests on disconnect; verify with mock-server tests
+- [x] 4.3 Implement request/response correlation with per-request timeouts and rejection of pending requests on disconnect; verify with mock-server tests
 - [ ] 4.4 Implement reconnect with exponential backoff + jitter, startup wait-for-HA, and auth-invalid-on-reconnect behaviour; verify with tests that drop/refuse connections on the mock server (fake timers)
 - [ ] 4.5 Implement ping/pong keep-alive and dead-connection detection; verify a test where the mock stops answering pings triggers reconnect
 - [ ] 4.6 Implement the engine-level subscription registry (shared `state_changed`, ref-counted event types, per-registration `subscribe_trigger`) with replay after reconnect; verify the "event subscription restored" scenario
