@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { FatalError } from "../../core/errors.js";
 import type { Logger } from "../../core/logger.js";
 import type { HomeAssistantConfig } from "./config.js";
-import { HaSession } from "./session.js";
+import { HaSession, HaTimeoutError } from "./session.js";
 import { AuthInvalidError, openAuthenticatedSocket } from "./socket.js";
 
 export const BACKOFF_INITIAL_MS = 1_000;
@@ -31,7 +31,14 @@ export interface ConnectionOptions {
   requestTimeoutMs?: number;
   /** Timeout for connect + auth handshake. */
   connectTimeoutMs?: number;
+  /** Interval between keep-alive pings. Default 30 s. */
+  pingIntervalMs?: number;
+  /** A ping without pong within this time marks the connection dead. Default 10 s. */
+  pongTimeoutMs?: number;
 }
+
+export const PING_INTERVAL_MS = 30_000;
+export const PONG_TIMEOUT_MS = 10_000;
 
 export type SessionListener = (
   session: HaSession,
@@ -94,6 +101,28 @@ export class HaConnection {
     await this.loop?.catch(() => undefined);
   }
 
+  /**
+   * Pings the session periodically. A missing pong means a half-open connection (e.g. the
+   * network dropped silently): the session is closed, which starts the reconnect.
+   */
+  private keepAlive(session: HaSession): void {
+    const { log } = this.options;
+    const interval = this.options.pingIntervalMs ?? PING_INTERVAL_MS;
+    const timeoutMs = this.options.pongTimeoutMs ?? PONG_TIMEOUT_MS;
+    const timer = setInterval(() => {
+      session.command({ type: "ping" }, { timeoutMs }).catch((err: unknown) => {
+        if (!(err instanceof HaTimeoutError) || !session.isOpen) return;
+        log.warn(
+          { timeoutMs },
+          "Home Assistant did not answer a ping; treating the connection as dead",
+        );
+        session.close();
+      });
+    }, interval);
+    timer.unref();
+    session.onClose(() => clearInterval(timer));
+  }
+
   private async run(onFirstConnect: () => void, onFatal: (err: unknown) => void): Promise<void> {
     const { log, config } = this.options;
     const signal = this.controller.signal;
@@ -126,6 +155,7 @@ export class HaConnection {
             : `Connected to Home Assistant ${haVersion}`,
         );
         const closed = new Promise<void>((r) => session.onClose(r));
+        this.keepAlive(session);
         for (const listener of [...this.sessionListeners])
           listener(session, { haVersion, reconnect });
         if (!reconnect) onFirstConnect();

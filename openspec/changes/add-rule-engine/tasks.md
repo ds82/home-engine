@@ -23,7 +23,7 @@
 - [x] 4.2 Implement URL derivation (http→ws, https→wss, Supervisor URL) and the auth handshake; verify tests for `auth_ok`, `auth_invalid` at startup (non-zero exit) and token redaction
 - [x] 4.3 Implement request/response correlation with per-request timeouts and rejection of pending requests on disconnect; verify with mock-server tests
 - [x] 4.4 Implement reconnect with exponential backoff + jitter, startup wait-for-HA, and auth-invalid-on-reconnect behaviour; verify with tests that drop/refuse connections on the mock server (fake timers)
-- [ ] 4.5 Implement ping/pong keep-alive and dead-connection detection; verify a test where the mock stops answering pings triggers reconnect
+- [x] 4.5 Implement ping/pong keep-alive and dead-connection detection; verify a test where the mock stops answering pings triggers reconnect
 - [ ] 4.6 Implement the engine-level subscription registry (shared `state_changed`, ref-counted event types, per-registration `subscribe_trigger`) with replay after reconnect; verify the "event subscription restored" scenario
 - [ ] 4.7 Implement the state cache (`get_states` on every connect, atomic swap, updates from `state_changed`) and the resync diff (synthetic `resynced` state events after reconnect, none on first connect); verify the cache scenarios and the door-opened-during-restart scenario
 - [ ] 4.8 Fetch `get_config` and `auth/current_user` after each connect and expose connection status plus connected/disconnected notifications; verify tests for status changes and notification delivery

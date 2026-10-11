@@ -192,4 +192,55 @@ describe("HaConnection", () => {
     await c.stop();
     await expect(starting).rejects.toThrow(/stopped/);
   });
+
+  it("reconnects when Home Assistant stops answering pings", async () => {
+    const capture = logCapture();
+    conn = new HaConnection({
+      config,
+      log: capture.log,
+      delay: fake.delay,
+      random: () => 1,
+      pingIntervalMs: 20,
+      pongTimeoutMs: 50,
+    });
+    const c = conn;
+    let disconnects = 0;
+    c.onDisconnect(() => disconnects++);
+    await c.start();
+    const first = c.current;
+
+    ha.respondToPing = false;
+    const backoff = await fake.next();
+    expect(disconnects).toBe(1);
+    expect(first?.isOpen).toBe(false);
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "warn",
+        message: expect.stringMatching(/did not answer a ping/),
+      }),
+    );
+
+    ha.respondToPing = true;
+    const reconnected = new Promise<void>((r) => c.onSession(() => r()));
+    backoff.release();
+    await reconnected;
+    expect(c.current).not.toBe(first);
+    expect(c.current?.isOpen).toBe(true);
+  });
+
+  it("keeps a healthy connection open while pings are answered", async () => {
+    conn = new HaConnection({
+      config,
+      log: logCapture().log,
+      delay: fake.delay,
+      pingIntervalMs: 10,
+      pongTimeoutMs: 200,
+    });
+    await conn.start();
+    const session = conn.current;
+    await new Promise((r) => setTimeout(r, 120));
+    expect(conn.current).toBe(session);
+    expect(ha.received.filter((m) => m.type === "ping").length).toBeGreaterThanOrEqual(3);
+    expect(fake.requested).toEqual([]);
+  });
 });
