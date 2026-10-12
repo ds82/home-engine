@@ -2,7 +2,7 @@
 
 ## 1. Repository scaffolding
 
-- [x] 1.1 Set up npm workspaces monorepo (`packages/engine` published as `home-engine`, `packages/sdk` as `@home-engine/sdk`, `packages/typegen`, `examples/rules`) with strict `tsconfig` base, ESLint, Prettier, Node LTS `engines` field, `.nvmrc`, MIT `LICENSE` file and `"license": "MIT"` in every `package.json`; verify `npm install` and `npm run build` succeed on an empty skeleton
+- [x] 1.1 Set up npm workspaces monorepo (`packages/engine` published as `@home-engine/engine`, `packages/sdk` as `@home-engine/sdk`, `packages/typegen`, `examples/rules`) with strict `tsconfig` base, ESLint, Prettier, Node LTS `engines` field, `.nvmrc`, MIT `LICENSE` file and `"license": "MIT"` in every `package.json`; verify `npm install` and `npm run build` succeed on an empty skeleton
 - [x] 1.2 Create `packages/engine/src/core` and `src/adapters/home-assistant` with an ESLint `no-restricted-imports` rule forbidding core → adapter imports; verify lint fails on a deliberate violating import
 - [x] 1.3 Add vitest with a workspace config and a CI workflow (lint, typecheck, test on Node LTS); verify a placeholder test passes locally and in CI
 - [x] 1.4 Build a reusable mock Home Assistant WebSocket server for tests (auth flow, `get_states`, `get_config`, `subscribe_events`, `subscribe_trigger`, `call_service`, `fire_event`, `ping`, `history/history_during_period`, `recorder/statistics_during_period`, plus a hook to push events and drop connections); verify with a self-test that a raw WebSocket client can authenticate and call a service

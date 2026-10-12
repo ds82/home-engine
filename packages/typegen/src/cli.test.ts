@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { build } from "esbuild";
-import { MockHomeAssistant } from "home-engine/testing";
+import { MockHomeAssistant } from "@home-engine/engine/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);

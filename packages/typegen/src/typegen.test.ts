@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MockHomeAssistant } from "home-engine/testing";
+import { MockHomeAssistant } from "@home-engine/engine/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fetchTypingsInput, websocketUrl } from "./fetch.js";
 import { generateTypings } from "./generate.js";

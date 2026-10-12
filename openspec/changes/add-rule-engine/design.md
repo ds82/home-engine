@@ -48,7 +48,7 @@ Constraints:
 
 ```
 packages/
-  engine/                      # the daemon (npm: home-engine, also the image's entrypoint)
+  engine/                      # the daemon (npm: @home-engine/engine, also the image's entrypoint)
     src/core/                  # backend-neutral: config, logging, loader, hot reload, rule scope,
                                #   scheduler, storage, http, bootstrap/shutdown
     src/adapters/home-assistant/  # HA connection, state cache, triggers, writes, typegen data source
@@ -62,7 +62,7 @@ Tooling: TypeScript strict, `tsup` (esbuild) for building packages, `vitest` for
 
 License: **MIT** for all packages and the image (`LICENSE` at the repository root, `license` field in every `package.json`, `org.opencontainers.image.licenses=MIT` label).
 
-Names: npm packages `home-engine` (engine/CLI) and `@home-engine/sdk`; GitHub organisation `home-engine` (repository `home-engine/home-engine`); container image `ghcr.io/home-engine/home-engine`. The core/adapter split lives in directories inside `packages/engine` rather than separate packages. That keeps versioning and the release simple, and an ESLint `no-restricted-imports` rule enforces the boundary (D13).
+Names: npm packages `@home-engine/engine` (engine/CLI, command `home-engine`), `@home-engine/sdk` and `@home-engine/typegen`; GitHub organisation `home-engine` (repository `home-engine/home-engine`); container image `ghcr.io/home-engine/home-engine`. The core/adapter split lives in directories inside `packages/engine` rather than separate packages. That keeps versioning and the release simple, and an ESLint `no-restricted-imports` rule enforces the boundary (D13).
 
 ### D3: Rule loading: per-file esbuild bundle + content-hashed dynamic import
 

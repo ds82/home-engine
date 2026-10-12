@@ -27,6 +27,6 @@
     "@home-engine/sdk": "0.0.0"
   },
   "devDependencies": {
-    "home-engine": "0.0.0"
+    "@home-engine/engine": "0.0.0"
   }
 }

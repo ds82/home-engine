@@ -49,7 +49,7 @@ None. This is a greenfield project.
 ## Impact
 
 - License: MIT.
-- Naming: npm packages `home-engine` and `@home-engine/sdk`, container image `ghcr.io/home-engine/home-engine`.
+- Naming: npm packages `@home-engine/engine` (command `home-engine`), `@home-engine/sdk` and `@home-engine/typegen`, container image `ghcr.io/home-engine/home-engine`.
 - New repository content: engine source (TypeScript, split into backend-neutral core and Home Assistant adapter), SDK/types package, Dockerfile, CI for multi-arch image builds, example rules and documentation.
 - External dependencies: Home Assistant WebSocket API (and the REST API for setting virtual entity state), plus a small set of npm libraries (WebSocket client if not native, transpiler, cron parser, sun calculation, file watcher, logger). Final choices are in design.md.
 - Users must provide a reachable Home Assistant URL and a long-lived access token (unless running as an add-on), plus mounted rules and data directories.

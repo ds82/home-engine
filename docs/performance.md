@@ -3,7 +3,7 @@
 ## Load test
 
 `scripts/load-test.mjs` runs the built engine against the mock Home Assistant from
-`home-engine/testing`, over a real WebSocket, with:
+`@home-engine/engine/testing`, over a real WebSocket, with:
 
 - 5,000 entities (4,990 sensors with attributes, 10 binary sensors),
 - 50 rules in 10 files: exact entity IDs, lists, glob patterns, `to` predicates, attribute

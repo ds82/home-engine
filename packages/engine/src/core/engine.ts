@@ -76,7 +76,7 @@ export function engineVersion(): string {
     const file = join(dir, "package.json");
     if (existsSync(file)) {
       const pkg = JSON.parse(readFileSync(file, "utf8")) as { name?: string; version?: string };
-      if (pkg.name === "home-engine") {
+      if (pkg.name === "@home-engine/engine") {
         return pkg.version ?? "0.0.0";
       }
     }

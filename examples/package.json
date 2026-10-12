@@ -1,5 +1,5 @@
 {
-  "name": "home-engine-example-rules",
+  "name": "@home-engine/examples",
   "private": true,
   "license": "MIT",
   "type": "module",
