@@ -66,7 +66,9 @@ export class SubscriptionRegistry {
     const e = entry;
     return {
       dispose: () => {
-        if (!e.handlers.delete(handler) || e.handlers.size > 0) return;
+        if (!e.handlers.delete(handler) || e.handlers.size > 0) {
+          return;
+        }
         this.eventTypes.delete(eventType);
         this.release(e.binding);
         e.binding = undefined;
@@ -96,7 +98,9 @@ export class SubscriptionRegistry {
     void this.bindTrigger(entry);
     return {
       dispose: () => {
-        if (entry.disposed) return;
+        if (entry.disposed) {
+          return;
+        }
         entry.disposed = true;
         this.triggers.delete(entry);
         this.release(entry.binding);
@@ -112,7 +116,9 @@ export class SubscriptionRegistry {
   async attach(session: HaSession): Promise<void> {
     this.session = session;
     session.onClose(() => {
-      if (this.session === session) this.session = undefined;
+      if (this.session === session) {
+        this.session = undefined;
+      }
     });
     await Promise.all([
       ...[...this.eventTypes.values()].map((e) => this.bindEventType(e)),
@@ -142,7 +148,9 @@ export class SubscriptionRegistry {
         this.log.error({ err, eventType: entry.eventType }, "Subscribing to events failed");
       }
     } finally {
-      if (entry.pending === session) entry.pending = undefined;
+      if (entry.pending === session) {
+        entry.pending = undefined;
+      }
     }
   }
 
@@ -168,9 +176,13 @@ export class SubscriptionRegistry {
       }
       entry.binding = { session, id };
     } catch (err) {
-      if (session.isOpen && !entry.disposed) entry.onError(err as Error);
+      if (session.isOpen && !entry.disposed) {
+        entry.onError(err as Error);
+      }
     } finally {
-      if (entry.pending === session) entry.pending = undefined;
+      if (entry.pending === session) {
+        entry.pending = undefined;
+      }
     }
   }
 
@@ -185,7 +197,9 @@ export class SubscriptionRegistry {
   }
 
   private dispatchTrigger(entry: TriggerEntry, event: unknown): void {
-    if (entry.disposed) return;
+    if (entry.disposed) {
+      return;
+    }
     const variables = ((event as { variables?: Record<string, unknown> }).variables ??
       {}) as Record<string, unknown>;
     try {
@@ -197,7 +211,9 @@ export class SubscriptionRegistry {
 
   /** Ends a subscription on its session, if that session is still open. */
   private release(binding: Binding | undefined): void {
-    if (!binding?.session.isOpen) return;
+    if (!binding?.session.isOpen) {
+      return;
+    }
     binding.session.unsubscribe(binding.id).catch((err: unknown) => {
       this.log.debug({ err }, "Unsubscribing failed");
     });

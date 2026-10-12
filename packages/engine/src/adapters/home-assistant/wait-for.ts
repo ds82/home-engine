@@ -42,7 +42,9 @@ export function createWaitFor(client: HaClient, clock: HoldClock = realClock): W
       throw new TypeError('waitFor(): the filter must be an object such as { to: "off" }');
     }
     for (const key of Object.keys(filter)) {
-      if (!FILTER_KEYS.has(key)) throw new TypeError(`waitFor(): unknown filter option "${key}"`);
+      if (!FILTER_KEYS.has(key)) {
+        throw new TypeError(`waitFor(): unknown filter option "${key}"`);
+      }
     }
     const timeoutMs =
       options.timeout === undefined
@@ -60,14 +62,20 @@ export function createWaitFor(client: HaClient, clock: HoldClock = realClock): W
       let cancelHold: (() => void) | undefined;
       let done = false;
       const finish = (fn: () => void): void => {
-        if (done) return;
+        if (done) {
+          return;
+        }
         done = true;
         cancelHold?.();
-        for (const cleanup of cleanups.splice(0)) cleanup();
+        for (const cleanup of cleanups.splice(0)) {
+          cleanup();
+        }
         fn();
       };
 
-      if (signal.aborted) return reject(signal.reason);
+      if (signal.aborted) {
+        return reject(signal.reason);
+      }
       const onAbort = (): void => finish(() => reject(signal.reason));
       signal.addEventListener("abort", onAbort, { once: true });
       cleanups.push(() => signal.removeEventListener("abort", onAbort));
@@ -79,9 +87,13 @@ export function createWaitFor(client: HaClient, clock: HoldClock = realClock): W
       const hold = (state: HaState, since: number): void => {
         cancelHold?.();
         cancelHold = undefined;
-        if (holdMs === undefined) return finish(() => resolve(state));
+        if (holdMs === undefined) {
+          return finish(() => resolve(state));
+        }
         const remaining = since + holdMs - clock.now();
-        if (remaining <= 0) return finish(() => resolve(state));
+        if (remaining <= 0) {
+          return finish(() => resolve(state));
+        }
         cancelHold = clock.setTimeout(() => finish(() => resolve(state)), remaining);
       };
 
@@ -90,12 +102,16 @@ export function createWaitFor(client: HaClient, clock: HoldClock = realClock): W
       if (current && filter.from === undefined && matcher.matchesCurrent(current)) {
         const stamp = filter.attribute !== undefined ? current.last_updated : current.last_changed;
         hold(current, Date.parse(stamp));
-        if (done) return;
+        if (done) {
+          return;
+        }
       }
 
       const watching = client.dispatcher.watch([entity], (change) => {
         const verdict = matcher.evaluate(change);
-        if (verdict.kind === "ignore") return;
+        if (verdict.kind === "ignore") {
+          return;
+        }
         if (verdict.kind === "match" && change.newState) {
           hold(
             change.newState,

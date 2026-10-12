@@ -146,7 +146,9 @@ describe("event, native and startup triggers", () => {
     );
     await flush();
     const [sub] = ha.triggerSubscriptions();
-    if (!sub) throw new Error("expected a trigger subscription");
+    if (!sub) {
+      throw new Error("expected a trigger subscription");
+    }
     expect(sub.trigger).toEqual({
       platform: "numeric_state",
       entity_id: "sensor.humidity",

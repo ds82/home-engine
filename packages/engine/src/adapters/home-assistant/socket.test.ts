@@ -13,7 +13,9 @@ describe("Home Assistant auth handshake", () => {
   });
 
   afterEach(async () => {
-    for (const ws of sockets.splice(0)) ws.close();
+    for (const ws of sockets.splice(0)) {
+      ws.close();
+    }
     await ha.stop();
   });
 
@@ -64,7 +66,9 @@ describe("Home Assistant auth handshake", () => {
       expect(err).toBeInstanceOf(ConnectError);
       expect((err as Error).message).toMatch(/Timed out/);
     } finally {
-      for (const c of silent.clients) c.terminate();
+      for (const c of silent.clients) {
+        c.terminate();
+      }
       await new Promise((r) => silent.close(r));
     }
   });

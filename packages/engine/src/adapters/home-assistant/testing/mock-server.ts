@@ -105,7 +105,9 @@ export class MockConnection {
   ) {}
 
   send(msg: unknown): void {
-    if (this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(msg));
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(msg));
+    }
   }
 }
 
@@ -182,7 +184,9 @@ export class MockHomeAssistant {
 
   /** Starts listening. Without a port, a free one is chosen; `start()` after `stop()` reuses it. */
   async start(port = this.listenPort): Promise<void> {
-    if (this.http) return;
+    if (this.http) {
+      return;
+    }
     const http = createServer((req, res) => void this.onHttp(req, res));
     const wss = new WebSocketServer({ server: http });
     wss.on("connection", (socket) => this.onConnection(socket));
@@ -230,7 +234,9 @@ export class MockHomeAssistant {
 
   /** Abruptly terminates every client connection, without a close handshake. */
   dropConnections(): void {
-    for (const conn of this.connections) conn.socket.terminate();
+    for (const conn of this.connections) {
+      conn.socket.terminate();
+    }
     this.connections.clear();
     this.subscriptions.clear();
     this.triggers.clear();
@@ -238,7 +244,9 @@ export class MockHomeAssistant {
 
   setTokens(tokens: string[]): void {
     this.tokens.clear();
-    for (const t of tokens) this.tokens.add(t);
+    for (const t of tokens) {
+      this.tokens.add(t);
+    }
   }
 
   // --------------------------------------------------------------------- REST
@@ -249,7 +257,9 @@ export class MockHomeAssistant {
   /** Handles the REST API subset the engine uses: `POST /api/states/<entity_id>`. */
   private async onHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
+    for await (const chunk of req) {
+      chunks.push(chunk as Buffer);
+    }
     const text = Buffer.concat(chunks).toString("utf8");
     const path = req.url ?? "/";
     const reply = (status: number, body: unknown): void => {
@@ -320,18 +330,26 @@ export class MockHomeAssistant {
     };
     this.states.set(entityId, next);
     let hist = this.history.get(entityId);
-    if (!hist) this.history.set(entityId, (hist = []));
+    if (!hist) {
+      this.history.set(entityId, (hist = []));
+    }
     hist.push(next);
-    if (!options.silent) this.emitStateChanged(old, next);
+    if (!options.silent) {
+      this.emitStateChanged(old, next);
+    }
     return next;
   }
 
   /** Removes an entity and sends `state_changed` with `new_state: null`. */
   removeState(entityId: string, options: { context?: HaContext; silent?: boolean } = {}): void {
     const old = this.states.get(entityId);
-    if (!old) return;
+    if (!old) {
+      return;
+    }
     this.states.delete(entityId);
-    if (!options.silent) this.emitStateChanged(old, null, options.context);
+    if (!options.silent) {
+      this.emitStateChanged(old, null, options.context);
+    }
   }
 
   /** Replaces the history of an entity (used by `history/history_during_period`). */
@@ -430,7 +448,9 @@ export class MockHomeAssistant {
     }
 
     if (!conn.authenticated) {
-      if (msg.type !== "auth") return;
+      if (msg.type !== "auth") {
+        return;
+      }
       const token = msg.access_token;
       if (typeof token === "string" && this.tokens.has(token)) {
         conn.authenticated = true;
@@ -445,10 +465,14 @@ export class MockHomeAssistant {
 
     this.received.push(msg);
     const { id, type } = msg;
-    if (typeof id !== "number" || typeof type !== "string") return;
+    if (typeof id !== "number" || typeof type !== "string") {
+      return;
+    }
 
     if (type === "ping") {
-      if (this.respondToPing) conn.send({ id, type: "pong" });
+      if (this.respondToPing) {
+        conn.send({ id, type: "pong" });
+      }
       return;
     }
 
@@ -456,13 +480,20 @@ export class MockHomeAssistant {
     const outcome: CommandOutcome = handler
       ? await handler({ ...msg, id, type }, conn)
       : { error: { code: "unknown_command", message: `Unknown command: ${type}` } };
-    if ("handled" in outcome) return;
-    if ("error" in outcome) conn.send({ id, type: "result", success: false, error: outcome.error });
-    else conn.send({ id, type: "result", success: true, result: outcome.result });
+    if ("handled" in outcome) {
+      return;
+    }
+    if ("error" in outcome) {
+      conn.send({ id, type: "result", success: false, error: outcome.error });
+    } else {
+      conn.send({ id, type: "result", success: true, result: outcome.result });
+    }
   }
 
   private sendTo(socket: WebSocket, msg: unknown): void {
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(msg));
+    }
   }
 
   private emitStateChanged(
@@ -511,9 +542,13 @@ export class MockHomeAssistant {
 
     this.onCommand("subscribe_trigger", (msg, conn) => {
       const error = this.validateTrigger(msg.trigger);
-      if (error) return { error: { code: "invalid_format", message: error } };
+      if (error) {
+        return { error: { code: "invalid_format", message: error } };
+      }
       let map = this.triggers.get(conn.socket);
-      if (!map) this.triggers.set(conn.socket, (map = new Map()));
+      if (!map) {
+        this.triggers.set(conn.socket, (map = new Map()));
+      }
       map.set(msg.id, { id: msg.id, trigger: msg.trigger, socket: conn.socket });
       return { result: null };
     });
@@ -557,9 +592,13 @@ export class MockHomeAssistant {
       }
       restore?.();
       const result: Record<string, unknown> = { context: call.context };
-      if (call.return_response) result.response = out?.response ?? null;
+      if (call.return_response) {
+        result.response = out?.response ?? null;
+      }
       conn.send({ id: msg.id, type: "result", success: true, result });
-      for (const send of deferred) send();
+      for (const send of deferred) {
+        send();
+      }
       return { handled: true };
     });
 
@@ -577,7 +616,9 @@ export class MockHomeAssistant {
         const rows = (this.statistics.get(id) ?? []).filter(
           (r) => r.start >= start && r.start < end,
         );
-        if (rows.length === 0) continue;
+        if (rows.length === 0) {
+          continue;
+        }
         result[id] = rows.map((r) => pickTypes(r, types));
       }
       return { result };
@@ -610,7 +651,9 @@ export class MockHomeAssistant {
 
   private subsFor(socket: WebSocket): Map<number, Subscription> {
     let map = this.subscriptions.get(socket);
-    if (!map) this.subscriptions.set(socket, (map = new Map()));
+    if (!map) {
+      this.subscriptions.set(socket, (map = new Map()));
+    }
     return map;
   }
 
@@ -638,7 +681,9 @@ export class MockHomeAssistant {
       });
       const before = all.filter((s) => Date.parse(s.last_updated) < start).at(-1);
       const rows = includeStart && before ? [before, ...inRange] : inRange;
-      if (rows.length === 0) continue;
+      if (rows.length === 0) {
+        continue;
+      }
       // Compressed format, as returned by Home Assistant's history websocket API.
       result[id] = rows.map((s, i) => {
         const lu = Date.parse(s.last_updated) / 1000;
@@ -647,8 +692,12 @@ export class MockHomeAssistant {
           s: s.state,
           lu: i === 0 && s === before ? start / 1000 : lu,
         };
-        if (!noAttributes) row.a = s.attributes;
-        if (lc !== lu) row.lc = lc;
+        if (!noAttributes) {
+          row.a = s.attributes;
+        }
+        if (lc !== lu) {
+          row.lc = lc;
+        }
         return row;
       });
     }
@@ -658,16 +707,22 @@ export class MockHomeAssistant {
 
 function targetEntityIds(call: ServiceCall): string[] {
   const raw = call.target?.entity_id ?? call.service_data.entity_id;
-  if (raw === undefined) return [];
+  if (raw === undefined) {
+    return [];
+  }
   return Array.isArray(raw) ? (raw as string[]) : [raw as string];
 }
 
 function pickTypes(row: StatisticRow, types: string[] | undefined): StatisticRow {
-  if (!types) return row;
+  if (!types) {
+    return row;
+  }
   const out: StatisticRow = { start: row.start, end: row.end };
   for (const t of types) {
     const key = t as keyof StatisticRow;
-    if (key in row) (out as unknown as Record<string, unknown>)[key] = row[key];
+    if (key in row) {
+      (out as unknown as Record<string, unknown>)[key] = row[key];
+    }
   }
   return out;
 }

@@ -64,7 +64,9 @@ export function nextSunEvent(
 ): number | undefined {
   for (let day = 0; day <= 366; day++) {
     const time = sunEventOn(event, after + day * DAY, location, timeZone);
-    if (time !== undefined && time + offsetMs > after) return time + offsetMs;
+    if (time !== undefined && time + offsetMs > after) {
+      return time + offsetMs;
+    }
   }
   return undefined;
 }
@@ -95,8 +97,9 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
 
   const requireLocation = (fn: string): Location => {
     const loc = location();
-    if (!loc)
+    if (!loc) {
       throw new Error(`${fn}() needs the location from Home Assistant, which is not known yet`);
+    }
     return loc;
   };
 
@@ -121,7 +124,9 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
   };
 
   const source: TriggerSource = (trigger, context) => {
-    if (trigger.kind !== "sun") throw new Error(`sun source cannot arm ${trigger.kind}`);
+    if (trigger.kind !== "sun") {
+      throw new Error(`sun source cannot arm ${trigger.kind}`);
+    }
     const offsetMs = trigger.offset === undefined ? 0 : parseOffset(trigger.offset);
     let cancel: () => void = () => {};
     let stopped = false;
@@ -133,7 +138,9 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
       cancel = () => {};
       pending = undefined;
       const loc = location();
-      if (!loc || stopped) return; // armed again when the Site becomes known
+      if (!loc || stopped) {
+        return;
+      } // armed again when the Site becomes known
       const tz = timeZone();
       for (const day of [0, 1]) {
         const time = sunEventOn(trigger.event, after + day * DAY, loc, tz);
@@ -154,7 +161,9 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
         if (at > after) {
           pending = at;
           cancel = clock.setTimeout(() => {
-            if (stopped) return;
+            if (stopped) {
+              return;
+            }
             context.fire({ type: "sun", event: trigger.event, scheduledAt: new Date(at) });
             arm(at);
           }, at - clock.now());
@@ -180,7 +189,9 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
 
 /** Sun offsets may be negative: "-30m", "+15m", or milliseconds. */
 export function parseOffset(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
   if (typeof value === "string") {
     const match = /^\s*([+-]?)\s*(.+)$/.exec(value);
     if (match?.[2]) {

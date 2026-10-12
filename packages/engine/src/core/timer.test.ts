@@ -34,7 +34,9 @@ class FakeHost implements TimerHost {
       const due = [...this.timers.entries()]
         .filter(([, t]) => t.at <= end)
         .sort((a, b) => a[1].at - b[1].at)[0];
-      if (!due) break;
+      if (!due) {
+        break;
+      }
       this.timers.delete(due[0]);
       this.wall += due[1].at - this.mono;
       this.mono = due[1].at;

@@ -69,12 +69,18 @@ export function loadConfig<B>(
   const problems: ConfigProblem[] = [];
   const core = readCoreConfig(env, problems);
   const backend = readBackend(env);
-  if (Array.isArray(backend)) problems.push(...backend);
+  if (Array.isArray(backend)) {
+    problems.push(...backend);
+  }
 
   const dirProblem = (options.checkRulesDir ?? checkReadableDir)(core.rulesDir);
-  if (dirProblem) problems.push({ message: `RULES_DIR: ${dirProblem}` });
+  if (dirProblem) {
+    problems.push({ message: `RULES_DIR: ${dirProblem}` });
+  }
 
-  if (problems.length > 0) throw new ConfigError(problems);
+  if (problems.length > 0) {
+    throw new ConfigError(problems);
+  }
   return { core, backend: backend as B };
 }
 
@@ -111,10 +117,14 @@ export function valueOrFile(env: Env, name: string, problems: ConfigProblem[]): 
     problems.push({ message: `${name} and ${name}_FILE are both set; set only one of them.` });
     return undefined;
   }
-  if (file === undefined) return direct?.trim();
+  if (file === undefined) {
+    return direct?.trim();
+  }
   try {
     const content = readFileSync(file, "utf8").trim();
-    if (content === "") problems.push({ message: `${name}_FILE: file ${file} is empty.` });
+    if (content === "") {
+      problems.push({ message: `${name}_FILE: file ${file} is empty.` });
+    }
     return content || undefined;
   } catch (err) {
     problems.push({ message: `${name}_FILE: cannot read ${file} (${errorCode(err)}).` });
@@ -130,8 +140,12 @@ function oneOf<T extends string>(
   problems: ConfigProblem[],
 ): T {
   const raw = value(env, name)?.trim().toLowerCase();
-  if (raw === undefined) return fallback;
-  if ((allowed as readonly string[]).includes(raw)) return raw as T;
+  if (raw === undefined) {
+    return fallback;
+  }
+  if ((allowed as readonly string[]).includes(raw)) {
+    return raw as T;
+  }
   problems.push({
     message: `${name}: "${env[name]}" is not valid; use one of ${allowed.join(", ")}.`,
   });
@@ -140,9 +154,15 @@ function oneOf<T extends string>(
 
 function bool(env: Env, name: string, fallback: boolean, problems: ConfigProblem[]): boolean {
   const raw = value(env, name)?.trim().toLowerCase();
-  if (raw === undefined) return fallback;
-  if (["true", "1", "yes", "on"].includes(raw)) return true;
-  if (["false", "0", "no", "off"].includes(raw)) return false;
+  if (raw === undefined) {
+    return fallback;
+  }
+  if (["true", "1", "yes", "on"].includes(raw)) {
+    return true;
+  }
+  if (["false", "0", "no", "off"].includes(raw)) {
+    return false;
+  }
   problems.push({ message: `${name}: "${env[name]}" is not a boolean; use true or false.` });
   return fallback;
 }
@@ -156,16 +176,22 @@ function list(env: Env, name: string): string[] {
 
 function port(env: Env, name: string, fallback: number, problems: ConfigProblem[]): number {
   const raw = value(env, name)?.trim();
-  if (raw === undefined) return fallback;
+  if (raw === undefined) {
+    return fallback;
+  }
   const n = Number(raw);
-  if (/^\d+$/.test(raw) && n <= 65535) return n;
+  if (/^\d+$/.test(raw) && n <= 65535) {
+    return n;
+  }
   problems.push({ message: `${name}: "${env[name]}" is not a port number (0-65535).` });
   return fallback;
 }
 
 function timeZone(env: Env, problems: ConfigProblem[]): string | undefined {
   const raw = value(env, "TIME_ZONE")?.trim();
-  if (raw === undefined) return undefined;
+  if (raw === undefined) {
+    return undefined;
+  }
   try {
     new Intl.DateTimeFormat("en", { timeZone: raw });
     return raw;
@@ -177,13 +203,19 @@ function timeZone(env: Env, problems: ConfigProblem[]): string | undefined {
 
 function checkReadableDir(path: string): string | undefined {
   try {
-    if (!statSync(path).isDirectory()) return `${path} is not a directory.`;
+    if (!statSync(path).isDirectory()) {
+      return `${path} is not a directory.`;
+    }
     accessSync(path, constants.R_OK | constants.X_OK);
     return undefined;
   } catch (err) {
     const code = errorCode(err);
-    if (code === "ENOENT") return `directory ${path} does not exist.`;
-    if (code === "EACCES") return `directory ${path} is not readable.`;
+    if (code === "ENOENT") {
+      return `directory ${path} does not exist.`;
+    }
+    if (code === "EACCES") {
+      return `directory ${path} is not readable.`;
+    }
     return `cannot access ${path} (${code}).`;
   }
 }
@@ -198,8 +230,12 @@ export const REDACTED = "***";
 
 /** Deep copy of `value` with every secret-looking key's value replaced by `***`. */
 export function redact(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redact);
-  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    return value.map(redact);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
   return Object.fromEntries(
     Object.entries(value).map(([key, v]) => [
       key,

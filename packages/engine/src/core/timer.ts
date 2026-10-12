@@ -35,7 +35,9 @@ export function scheduleAt(target: number, fn: () => void, host: TimerHost = rea
   let handle: unknown;
   let cancelled = false;
   const check = (): void => {
-    if (cancelled) return;
+    if (cancelled) {
+      return;
+    }
     const remaining = target - host.now();
     if (remaining <= 0) {
       cancelled = true;

@@ -41,7 +41,9 @@ export interface OpenOptions {
 export function openAuthenticatedSocket(options: OpenOptions): Promise<AuthenticatedSocket> {
   const { wsUrl, token, log, signal, timeoutMs = 10_000 } = options;
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(signal.reason);
+    if (signal?.aborted) {
+      return reject(signal.reason);
+    }
     let ws: WebSocket;
     try {
       ws = new WebSocket(wsUrl);
@@ -51,7 +53,9 @@ export function openAuthenticatedSocket(options: OpenOptions): Promise<Authentic
 
     let settled = false;
     const finish = (err: Error | undefined, result?: AuthenticatedSocket): void => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);

@@ -53,7 +53,9 @@ export async function bundleRuleFile(options: BundleOptions): Promise<BundleResu
   });
 
   const code = result.outputFiles[0]?.contents;
-  if (!code) throw new Error(`esbuild produced no output for ${options.file}`);
+  if (!code) {
+    throw new Error(`esbuild produced no output for ${options.file}`);
+  }
   const hash = createHash("sha256").update(code).digest("hex").slice(0, 12);
   const outfile = join(resolve(options.buildDir), `${options.file}.${hash}.mjs`);
   await mkdir(dirname(outfile), { recursive: true });
@@ -85,7 +87,9 @@ function sdkPlugin(): Plugin {
       }));
       b.onLoad({ filter: /.*/, namespace: "home-engine-sdk" }, () => {
         const runtime = installedSdkRuntime();
-        if (!runtime) throw new Error("The SDK runtime is not installed");
+        if (!runtime) {
+          throw new Error("The SDK runtime is not installed");
+        }
         const key = `Symbol.for(${JSON.stringify(SDK_RUNTIME_KEY.description)})`;
         const names = Object.keys(runtime).filter((n) => /^[A-Za-z_$][\w$]*$/.test(n));
         const contents = [

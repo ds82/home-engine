@@ -61,7 +61,9 @@ rule("temperature summary", onChange("binary_sensor.window", { to: "off" }), asy
   const average = await averageSince("sensor.living_room_temperature", "24h");
   const low = await minimumSince("sensor.living_room_temperature", "24h");
   const high = await maximumSince("sensor.living_room_temperature", "24h");
-  if (average !== undefined) console.log(`24 h: Ø ${average.toFixed(1)} (${low}–${high})`);
+  if (average !== undefined) {
+    console.log(`24 h: Ø ${average.toFixed(1)} (${low}–${high})`);
+  }
 });
 ```
 
@@ -104,7 +106,9 @@ rule("monthly means", onStartup(), async () => {
     period: "day",
     types: ["mean", "min", "max"],
   });
-  for (const day of days) console.log(day.start.toDateString(), day.mean, day.min, day.max);
+  for (const day of days) {
+    console.log(day.start.toDateString(), day.mean, day.min, day.max);
+  }
 });
 ```
 

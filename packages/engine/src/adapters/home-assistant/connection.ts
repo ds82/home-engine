@@ -88,7 +88,9 @@ export class HaConnection {
    * in the background. An invalid token on this first connection rejects with FatalError.
    */
   start(): Promise<void> {
-    if (this.loop) throw new Error("HaConnection already started");
+    if (this.loop) {
+      throw new Error("HaConnection already started");
+    }
     return new Promise<void>((resolve, reject) => {
       this.loop = this.run(resolve, reject);
     });
@@ -111,7 +113,9 @@ export class HaConnection {
     const timeoutMs = this.options.pongTimeoutMs ?? PONG_TIMEOUT_MS;
     const timer = setInterval(() => {
       session.command({ type: "ping" }, { timeoutMs }).catch((err: unknown) => {
-        if (!(err instanceof HaTimeoutError) || !session.isOpen) return;
+        if (!(err instanceof HaTimeoutError) || !session.isOpen) {
+          return;
+        }
         log.warn(
           { timeoutMs },
           "Home Assistant did not answer a ping; treating the connection as dead",
@@ -156,19 +160,28 @@ export class HaConnection {
         );
         const closed = new Promise<void>((r) => session.onClose(r));
         this.keepAlive(session);
-        for (const listener of [...this.sessionListeners])
+        for (const listener of [...this.sessionListeners]) {
           listener(session, { haVersion, reconnect });
-        if (!reconnect) onFirstConnect();
+        }
+        if (!reconnect) {
+          onFirstConnect();
+        }
 
         await closed;
-        if (signal.aborted) return;
+        if (signal.aborted) {
+          return;
+        }
         log.warn("Lost connection to Home Assistant; reconnecting");
-        for (const listener of [...this.disconnectListeners]) listener();
+        for (const listener of [...this.disconnectListeners]) {
+          listener();
+        }
         // Fall through to the backoff delay: even after a drop we never reconnect in a
         // tight loop, in case Home Assistant accepts and immediately drops connections.
       } catch (err) {
         if (signal.aborted) {
-          if (!this.connectedOnce) onFatal(err);
+          if (!this.connectedOnce) {
+            onFatal(err);
+          }
           return;
         }
         if (err instanceof AuthInvalidError) {
@@ -203,7 +216,9 @@ export class HaConnection {
       try {
         await this.delay(wait, signal);
       } catch {
-        if (!this.connectedOnce) onFatal(signal.reason);
+        if (!this.connectedOnce) {
+          onFatal(signal.reason);
+        }
         return;
       }
     }

@@ -195,7 +195,9 @@ The body receives one event per firing. Every event has `type`, the `trigger` th
 import { onChange, onStartup, rule } from "@home-engine/sdk";
 
 rule("narrowing", [onStartup(), onChange("sun.sun")], (event) => {
-  if (event.type === "startup") return;
+  if (event.type === "startup") {
+    return;
+  }
   console.log(event.entityId, event.to?.attributes);
 });
 ```
@@ -226,7 +228,9 @@ tell manual changes apart from your own, or to avoid feedback loops:
 import { onChange, rule } from "@home-engine/sdk";
 
 rule("log manual switching", onChange("light.hall"), (event) => {
-  if (event.causedByEngine) return;
+  if (event.causedByEngine) {
+    return;
+  }
   console.log(`someone switched the hall light ${event.to?.state}`);
 });
 ```
@@ -250,7 +254,9 @@ import { listen, onChange, setup } from "@home-engine/sdk";
 
 setup("porch", () => {
   const nightMode = process.env.PORCH_NIGHT_MODE === "1";
-  if (nightMode) listen(onChange("binary_sensor.porch_motion", { to: "on" }), () => {});
+  if (nightMode) {
+    listen(onChange("binary_sensor.porch_motion", { to: "on" }), () => {});
+  }
   listen(
     onChange("light.porch", { to: "on", for: "10m" }),
     () => console.log("porch light on for 10 minutes"),
@@ -269,7 +275,9 @@ import { onChange, rule, waitFor } from "@home-engine/sdk";
 
 rule("garage closes behind me", onChange("light.garage", { to: "on" }), async () => {
   const off = await waitFor("light.garage", { to: "off" }, { timeout: "10m" });
-  if (!off) console.log("the garage light is still on after 10 minutes");
+  if (!off) {
+    console.log("the garage light is still on after 10 minutes");
+  }
 });
 ```
 

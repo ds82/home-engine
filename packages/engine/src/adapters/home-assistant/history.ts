@@ -99,7 +99,9 @@ export function aggregate(segments: readonly Segment[]): Aggregates {
   let maximum: number | undefined;
   for (const seg of segments) {
     const ms = seg.to - seg.from;
-    if (ms <= 0) continue;
+    if (ms <= 0) {
+      continue;
+    }
     weighted += seg.mean * ms;
     duration += ms;
     minimum = minimum === undefined ? seg.min : Math.min(minimum, seg.min);
@@ -110,7 +112,9 @@ export function aggregate(segments: readonly Segment[]): Aggregates {
 
 /** A state as a number, or undefined for `unknown`, `unavailable` and other text. */
 export function numericState(state: string): number | undefined {
-  if (state.trim() === "") return undefined;
+  if (state.trim() === "") {
+    return undefined;
+  }
   const value = Number(state);
   return Number.isFinite(value) ? value : undefined;
 }
@@ -153,7 +157,9 @@ export function checkEntity(fn: string, entity: unknown): string {
  */
 export function parseTime(value: unknown, now: number, fn: string, what = "time"): number {
   if (value instanceof Date) {
-    if (!Number.isNaN(value.getTime())) return value.getTime();
+    if (!Number.isNaN(value.getTime())) {
+      return value.getTime();
+    }
   } else if (typeof value === "string") {
     try {
       return now - parseDuration(value);
@@ -161,7 +167,9 @@ export function parseTime(value: unknown, now: number, fn: string, what = "time"
       // Not a duration: try ISO 8601.
     }
     const at = Date.parse(value);
-    if (/^\d{4}-\d{2}-\d{2}/.test(value.trim()) && !Number.isNaN(at)) return at;
+    if (/^\d{4}-\d{2}-\d{2}/.test(value.trim()) && !Number.isNaN(at)) {
+      return at;
+    }
   }
   throw new TypeError(
     `${fn}(): invalid ${what} ${JSON.stringify(value)}; use a Date, an ISO 8601 string such as ` +
@@ -174,7 +182,9 @@ export function localMidnight(now: number, timeZone: string | undefined): number
   let midnight = nextLocalTime("00:00:00", timeZone, now - 26 * 3_600_000);
   for (;;) {
     const next = nextLocalTime("00:00:00", timeZone, midnight);
-    if (next > now) return midnight;
+    if (next > now) {
+      return midnight;
+    }
     midnight = next;
   }
 }
@@ -187,7 +197,9 @@ export function createHistory(
   /** Sends a recorder command; a missing recorder becomes a RecorderMissingError. */
   async function recorder<T>(what: string, message: Record<string, unknown> & { type: string }) {
     const session = client.connection.current;
-    if (!session || !client.isReady) throw new NotConnectedError(what);
+    if (!session || !client.isReady) {
+      throw new NotConnectedError(what);
+    }
     try {
       return await session.command<T>(message);
     } catch (err) {
@@ -203,7 +215,9 @@ export function createHistory(
   const warnOnce = (entity: string, message: string): void => {
     const run = currentRun();
     const key = `${run?.scope.ruleId ?? "-"}\0${entity}`;
-    if (warned.has(key)) return;
+    if (warned.has(key)) {
+      return;
+    }
     warned.add(key);
     (run?.scope.log ?? log)?.warn({ entity }, message);
   };
@@ -235,7 +249,9 @@ export function createHistory(
     }
     const entries: HistoryEntry[] = [];
     for (const row of result[entity] ?? []) {
-      if (entries.at(-1)?.state === row.s) continue;
+      if (entries.at(-1)?.state === row.s) {
+        continue;
+      }
       const at = Math.max(start, Math.round((row.lc ?? row.lu) * 1000));
       entries.push({ state: row.s, at: new Date(at) });
     }
@@ -254,10 +270,14 @@ export function createHistory(
     const segments: Segment[] = [];
     for (const row of rows) {
       const { mean, min, max } = row;
-      if (typeof mean !== "number" || typeof min !== "number" || typeof max !== "number") continue;
+      if (typeof mean !== "number" || typeof min !== "number" || typeof max !== "number") {
+        continue;
+      }
       const segFrom = Math.max(start, epochMs(row.start));
       const segTo = Math.min(end, epochMs(row.end));
-      if (segTo > segFrom) segments.push({ from: segFrom, to: segTo, mean, min, max });
+      if (segTo > segFrom) {
+        segments.push({ from: segFrom, to: segTo, mean, min, max });
+      }
     }
     return segments;
   }
@@ -271,13 +291,17 @@ export function createHistory(
     const segments: Segment[] = [];
     entries.forEach((entry, i) => {
       const value = numericState(entry.state);
-      if (value === undefined) return;
+      if (value === undefined) {
+        return;
+      }
       const next = entries[i + 1];
       const to = next ? next.at.getTime() : end;
       segments.push({ from: entry.at.getTime(), to, mean: value, min: value, max: value });
     });
     const covered = entries[0]?.at.getTime() ?? end;
-    if (covered > start) segments.unshift(...(await statisticsSegments(entity, start, covered)));
+    if (covered > start) {
+      segments.unshift(...(await statisticsSegments(entity, start, covered)));
+    }
     return segments;
   }
 
@@ -310,7 +334,9 @@ export function createHistory(
     const now = clock.now();
     const start = parseTime(since, now, fn, "start");
     const end = until === undefined ? now : parseTime(until, now, fn, "end");
-    if (end < start) throw new RangeError(`${fn}(): the end lies before the start`);
+    if (end < start) {
+      throw new RangeError(`${fn}(): the end lies before the start`);
+    }
     return { start, end };
   };
 
@@ -351,7 +377,9 @@ export function createHistory(
           };
           for (const type of types) {
             const value = row[type];
-            if (typeof value === "number") entry[type] = value;
+            if (typeof value === "number") {
+              entry[type] = value;
+            }
           }
           return entry;
         });
@@ -425,8 +453,12 @@ export function createHistory(
       // The first entry may be the state already in effect at `start`, not a change within.
       for (let i = entries.length - 1; i >= 0; i--) {
         const entry = entries[i] as HistoryEntry;
-        if (entry.state !== wanted) continue;
-        if (i === 0 && entry.at.getTime() === start) return undefined;
+        if (entry.state !== wanted) {
+          continue;
+        }
+        if (i === 0 && entry.at.getTime() === start) {
+          return undefined;
+        }
         return entry.at;
       }
       return undefined;

@@ -30,7 +30,9 @@ describe("rule registration", () => {
     const rules = await evaluateFile("presence.ts", async () => {
       const notifyOnArrival = (person: string): void =>
         registerTriggeredRule(`presence-${person}`, motion, noop);
-      for (const person of ["dennis", "lydia"]) notifyOnArrival(person);
+      for (const person of ["dennis", "lydia"]) {
+        notifyOnArrival(person);
+      }
     });
     expect(rules.map((r) => r.id)).toEqual(["presence#presence-dennis", "presence#presence-lydia"]);
   });

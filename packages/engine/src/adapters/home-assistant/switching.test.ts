@@ -59,7 +59,9 @@ describe("on/off, forceOn/forceOff/toggle, up/down", () => {
         error = err;
       }
     }).done;
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
   }
 
   const sent = () =>

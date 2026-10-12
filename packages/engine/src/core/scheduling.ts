@@ -41,7 +41,9 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
     const ms = parseDuration(duration, "sleep() duration");
     const { signal, scope } = requireRun("sleep");
     return new Promise<void>((resolve, reject) => {
-      if (signal.aborted) return reject(signal.reason);
+      if (signal.aborted) {
+        return reject(signal.reason);
+      }
       const untrack = scope.trackTimer();
       const onAbort = (): void => {
         untrack();
@@ -59,8 +61,9 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
 
   function after(duration: Duration, callback: () => void | Promise<void>): TimerHandle {
     const ms = parseDuration(duration, "after() duration");
-    if (typeof callback !== "function")
+    if (typeof callback !== "function") {
       throw new TypeError("after(): the callback must be a function");
+    }
     const { scope, signal } = requireRun("after");
     let nextRun: Date | undefined = new Date(clock.now() + ms);
     const untrack = scope.trackTimer();
@@ -71,7 +74,9 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       invoke(scope, "callback", () => callback());
     }, ms);
     function cancel(): void {
-      if (!nextRun) return;
+      if (!nextRun) {
+        return;
+      }
       nextRun = undefined;
       untrack();
       cancelTimer();
@@ -94,7 +99,9 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
   }
 
   const everySource: TriggerSource = (trigger, context) => {
-    if (trigger.kind !== "every") throw new Error(`every source cannot arm ${trigger.kind}`);
+    if (trigger.kind !== "every") {
+      throw new Error(`every source cannot arm ${trigger.kind}`);
+    }
     const interval = parseDuration(trigger.interval);
     // The grid passes through the alignTo time (in the Site's time zone) or the start time.
     const anchor = trigger.alignTo
@@ -113,12 +120,16 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       const at = firstAfter(after);
       pending = at;
       cancel = clock.setTimeout(() => {
-        if (stopped) return;
+        if (stopped) {
+          return;
+        }
         fireAt(at);
         armNext(at);
       }, at - clock.now());
     };
-    if (trigger.immediate) fireAt(clock.now());
+    if (trigger.immediate) {
+      fireAt(clock.now());
+    }
     armNext(clock.now());
     return {
       nextRun: () => (stopped || pending === undefined ? undefined : new Date(pending)),
@@ -150,9 +161,13 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       cancel();
       const at = next(after);
       pending = at;
-      if (at === undefined || stopped) return;
+      if (at === undefined || stopped) {
+        return;
+      }
       cancel = clock.setTimeout(() => {
-        if (stopped) return;
+        if (stopped) {
+          return;
+        }
         context.fire({ type: "time", scheduledAt: new Date(at) });
         arm(at);
       }, at - clock.now());
@@ -202,17 +217,24 @@ export function nextDaily(
   const { h, m, s } = parseLocalTime(time, "daily()");
   const dow = weekdays ? weekdayNumbers(weekdays).join(",") : "*";
   const next = new Cron(`${s} ${m} ${h} * * ${dow}`, tzOption(timeZone)).nextRun(new Date(after));
-  if (!next) return undefined;
+  if (!next) {
+    return undefined;
+  }
   const at = next.getTime();
   const wanted = h * 3600 + m * 60 + s;
-  if (localSeconds(at, timeZone) === wanted) return at;
+  if (localSeconds(at, timeZone) === wanted) {
+    return at;
+  }
   // Shifted by a DST gap: find the instant the local clock jumped past the wanted time.
   let lo = at - 3 * 3600_000;
   let hi = at;
   while (hi - lo > 1) {
     const mid = lo + Math.floor((hi - lo) / 2);
-    if (localSeconds(mid, timeZone) >= wanted && sameLocalDay(mid, at, timeZone)) hi = mid;
-    else lo = mid;
+    if (localSeconds(mid, timeZone) >= wanted && sameLocalDay(mid, at, timeZone)) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
   }
   return Math.max(hi, after + 1);
 }
@@ -247,6 +269,8 @@ export function nextLocalTime(time: string, timeZone: string | undefined, now: n
   const { h, m, s } = parseLocalTime(time, "time");
   const cron = new Cron(`${s} ${m} ${h} * * *`, timeZone ? { timezone: timeZone } : {});
   const next = cron.nextRun(new Date(now));
-  if (!next) throw new Error(`No next occurrence of ${time}`);
+  if (!next) {
+    throw new Error(`No next occurrence of ${time}`);
+  }
   return next.getTime();
 }

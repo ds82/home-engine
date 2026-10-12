@@ -12,7 +12,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function request(path, { method = "GET", token, json, form } = {}) {
   const headers = {};
-  if (token) headers.authorization = `Bearer ${token}`;
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
   let body;
   if (json) {
     headers["content-type"] = "application/json";
@@ -22,7 +24,9 @@ async function request(path, { method = "GET", token, json, form } = {}) {
   }
   const res = await fetch(`${base}${path}`, { method, headers, body });
   const text = await res.text();
-  if (!res.ok) throw new Error(`${method} ${path}: HTTP ${res.status} ${text}`);
+  if (!res.ok) {
+    throw new Error(`${method} ${path}: HTTP ${res.status} ${text}`);
+  }
   return text ? JSON.parse(text) : undefined;
 }
 
@@ -32,7 +36,9 @@ async function waitForHomeAssistant() {
     try {
       return await request("/api/onboarding");
     } catch (err) {
-      if (Date.now() > deadline) throw err;
+      if (Date.now() > deadline) {
+        throw err;
+      }
       await sleep(2000);
     }
   }
@@ -61,8 +67,11 @@ function longLivedToken(accessToken) {
         reject(new Error("access token rejected"));
       } else if (msg.type === "result") {
         ws.close();
-        if (msg.success) resolve(msg.result);
-        else reject(new Error(msg.error?.message ?? "creating the token failed"));
+        if (msg.success) {
+          resolve(msg.result);
+        } else {
+          reject(new Error(msg.error?.message ?? "creating the token failed"));
+        }
       }
     });
   });
@@ -70,7 +79,9 @@ function longLivedToken(accessToken) {
 
 const steps = await waitForHomeAssistant();
 const userStep = steps.find((s) => s.step === "user");
-if (userStep?.done) throw new Error("Home Assistant is already onboarded");
+if (userStep?.done) {
+  throw new Error("Home Assistant is already onboarded");
+}
 
 const { auth_code: code } = await request("/api/onboarding/users", {
   method: "POST",

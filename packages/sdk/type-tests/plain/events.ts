@@ -33,7 +33,9 @@ rule("narrowing", [motion, nightly], (event) => {
   // @ts-expect-error -- outside the branch the event may be a time event
   void event.entityId;
   // @ts-expect-error -- this rule has no bus-event trigger, so "event" is impossible
-  if (event.type === "event") return;
+  if (event.type === "event") {
+    return;
+  }
   const signal: AbortSignal = event.signal;
   void signal;
 });
@@ -45,7 +47,9 @@ rule("single trigger", zha, (event) => {
 });
 
 rule("startup and state", [startup, motion], (event) => {
-  if (event.type === "startup") return;
+  if (event.type === "startup") {
+    return;
+  }
   const id: string = event.entityId;
   void id;
 });

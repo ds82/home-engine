@@ -10,9 +10,13 @@ import type { SubscriptionRegistry } from "./subscriptions.js";
 /** `onEvent`: one shared subscription per event type; the data filter is applied locally. */
 export function eventTriggerSource(registry: SubscriptionRegistry): TriggerSource {
   return (trigger: Trigger, context) => {
-    if (trigger.kind !== "event") throw new Error(`event source cannot arm ${trigger.kind}`);
+    if (trigger.kind !== "event") {
+      throw new Error(`event source cannot arm ${trigger.kind}`);
+    }
     return registry.onEvent(trigger.eventType, (event) => {
-      if (!matchesData(trigger.dataFilter, event.data)) return;
+      if (!matchesData(trigger.dataFilter, event.data)) {
+        return;
+      }
       context.fire({
         type: "event",
         eventType: event.event_type,
@@ -28,8 +32,9 @@ export function eventTriggerSource(registry: SubscriptionRegistry): TriggerSourc
 /** `onTrigger`: a native Home Assistant trigger with its own subscription. */
 export function haTriggerSource(registry: SubscriptionRegistry): TriggerSource {
   return (trigger: Trigger, context) => {
-    if (trigger.kind !== "ha-trigger")
+    if (trigger.kind !== "ha-trigger") {
       throw new Error(`ha-trigger source cannot arm ${trigger.kind}`);
+    }
     return registry.onTrigger(
       trigger.config,
       (variables) => context.fire({ type: "ha-trigger", variables }),
@@ -60,13 +65,19 @@ export function homeAssistantTriggerSources(
  * Nested objects match partially; leaves are literals, arrays of allowed values or predicates.
  */
 export function matchesData(filter: EventDataFilter | undefined, data: unknown): boolean {
-  if (filter === undefined) return true;
-  if (typeof filter === "function") return filter(data as Record<string, unknown>);
+  if (filter === undefined) {
+    return true;
+  }
+  if (typeof filter === "function") {
+    return filter(data as Record<string, unknown>);
+  }
   return matchesPartial(filter, data);
 }
 
 function matchesPartial(filter: Record<string, unknown>, data: unknown): boolean {
-  if (data === null || typeof data !== "object" || Array.isArray(data)) return false;
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return false;
+  }
   return Object.entries(filter).every(([key, expected]) => {
     const actual = (data as Record<string, unknown>)[key];
     if (expected !== null && typeof expected === "object" && !Array.isArray(expected)) {

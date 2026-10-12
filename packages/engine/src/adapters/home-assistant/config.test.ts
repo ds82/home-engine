@@ -15,7 +15,9 @@ function problemsOf(env: Env): string[] {
   try {
     load(env);
   } catch (err) {
-    if (err instanceof ConfigError) return err.problems.map((p) => p.message);
+    if (err instanceof ConfigError) {
+      return err.problems.map((p) => p.message);
+    }
     throw err;
   }
   throw new Error("expected a ConfigError");

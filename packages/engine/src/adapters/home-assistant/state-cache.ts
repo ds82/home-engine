@@ -83,12 +83,16 @@ export class StateCache {
         { differed: changes.length, entities: next.size },
         `Resync after reconnect: ${changes.length} entities differed`,
       );
-      for (const change of changes) this.emit(change);
+      for (const change of changes) {
+        this.emit(change);
+      }
     }
     this.synced = true;
 
     // Events that raced with get_states: apply those newer than the snapshot.
-    for (const event of buffered) this.onStateChanged(event, next);
+    for (const event of buffered) {
+      this.onStateChanged(event, next);
+    }
   }
 
   dispose(): void {
@@ -113,12 +117,19 @@ export class StateCache {
     if (snapshot) {
       // Replaying a buffered event: skip it if the snapshot already reflects it.
       const snap = snapshot.get(entityId);
-      if (newState && snap && snap.last_updated >= newState.last_updated) return;
-      if (!newState && !snap) return;
+      if (newState && snap && snap.last_updated >= newState.last_updated) {
+        return;
+      }
+      if (!newState && !snap) {
+        return;
+      }
     }
 
-    if (newState) this.states.set(entityId, newState);
-    else this.states.delete(entityId);
+    if (newState) {
+      this.states.set(entityId, newState);
+    } else {
+      this.states.delete(entityId);
+    }
     this.emit({
       entityId,
       oldState: current ?? data.old_state ?? undefined,
@@ -162,12 +173,20 @@ function diff(before: Map<string, HaState>, after: Map<string, HaState>): StateC
 }
 
 export function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (a === b) {
+    return true;
+  }
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
+    return false;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) {
+    return false;
+  }
   const ka = Object.keys(a);
   const kb = Object.keys(b);
-  if (ka.length !== kb.length) return false;
+  if (ka.length !== kb.length) {
+    return false;
+  }
   return ka.every(
     (k) =>
       Object.prototype.hasOwnProperty.call(b, k) &&

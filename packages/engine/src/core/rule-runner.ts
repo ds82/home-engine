@@ -77,7 +77,9 @@ async function startTriggeredRule(
   scope.onDispose(() => controller.cancelAll());
 
   const fire = (trigger: Trigger, payload: EventPayload): void => {
-    if (scope.disposed) return;
+    if (scope.disposed) {
+      return;
+    }
     traceFiring(scope, trigger, payload);
     controller.submit(() =>
       invoke(scope, "body", (signal) =>
@@ -91,7 +93,9 @@ async function startTriggeredRule(
       position: (i) => `t${i}`,
       restoreHolds: true,
     });
-    for (const trigger of startups) fire(trigger, { type: "startup" });
+    for (const trigger of startups) {
+      fire(trigger, { type: "startup" });
+    }
   } catch (err) {
     return failed(scope, err, "Starting the rule failed");
   }
@@ -144,9 +148,13 @@ async function startSetupRule(
     // invoke() already logged the error with the rule ID.
     return failed(scope, threw);
   }
-  if (typeof result === "function") scope.addTeardown(result as () => void | Promise<void>);
+  if (typeof result === "function") {
+    scope.addTeardown(result as () => void | Promise<void>);
+  }
 
-  for (const fireStartup of host.startupListeners.splice(0)) fireStartup();
+  for (const fireStartup of host.startupListeners.splice(0)) {
+    fireStartup();
+  }
   return started(scope);
 }
 
@@ -171,7 +179,9 @@ export function listen(
   }
 
   const fire = (trigger: Trigger, payload: EventPayload): void => {
-    if (scope.disposed || cancelled) return;
+    if (scope.disposed || cancelled) {
+      return;
+    }
     traceFiring(scope, trigger, payload, "listener");
     invoke(scope, "listener", (signal) => callback({ ...payload, trigger, signal } as RuleEvent));
   };
@@ -188,14 +198,19 @@ export function listen(
     collect: disarm,
     armed: armedOfListener,
   });
-  for (const trigger of startups)
+  for (const trigger of startups) {
     host.startupListeners.push(() => fire(trigger, { type: "startup" }));
+  }
 
   return {
     cancel: () => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       cancelled = true;
-      for (const d of disarm.splice(0)) d.dispose();
+      for (const d of disarm.splice(0)) {
+        d.dispose();
+      }
     },
     get nextRun() {
       return cancelled ? undefined : earliest(armedOfListener.map((a) => a.nextRun?.()));
@@ -210,7 +225,9 @@ function traceFiring(
   payload: EventPayload,
   target: "rule" | "listener" = "rule",
 ): void {
-  if (!scope.log.isLevelEnabled("debug")) return;
+  if (!scope.log.isLevelEnabled("debug")) {
+    return;
+  }
   const fields = payload as Record<string, unknown>;
   const entityId = typeof fields.entityId === "string" ? fields.entityId : undefined;
   const eventType = typeof fields.eventType === "string" ? fields.eventType : undefined;
@@ -244,7 +261,9 @@ function arm(
       continue;
     }
     const source = sources[trigger.kind];
-    if (!source) throw new Error(`No trigger source for "${trigger.kind}" triggers`);
+    if (!source) {
+      throw new Error(`No trigger source for "${trigger.kind}" triggers`);
+    }
     const identity = triggerIdentity(how.position(index), trigger);
     const armed = source(trigger, {
       scope,
@@ -281,7 +300,11 @@ function arm(
 /** The earliest of several next-run times. */
 export function earliest(times: ReadonlyArray<Date | undefined>): Date | undefined {
   let min: Date | undefined;
-  for (const t of times) if (t && (!min || t < min)) min = t;
+  for (const t of times) {
+    if (t && (!min || t < min)) {
+      min = t;
+    }
+  }
   return min;
 }
 
@@ -295,7 +318,9 @@ function started(scope: RuleScopeImpl): StartedRule {
 
 /** Marks the start as failed and releases everything the rule registered so far. */
 async function failed(scope: RuleScopeImpl, err: unknown, message?: string): Promise<StartedRule> {
-  if (message) scope.log.error({ err }, message);
+  if (message) {
+    scope.log.error({ err }, message);
+  }
   scope.recordError(err);
   await scope.dispose();
   return {

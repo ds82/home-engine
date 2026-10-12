@@ -77,9 +77,12 @@ home-engine:
 ```ts
 import { forceOff, forceOn, isOn, onChange, rule } from "@home-engine/sdk";
 
-rule("Apple Lampe zusammen mit Monitoren schalten", onChange("switch.az_peripherie"), () => {
-  if (isOn("switch.az_peripherie")) void forceOn("light.kg_apple");
-  else void forceOff("light.kg_apple");
+rule("Apple Lampe zusammen mit Monitoren schalten", onChange("switch.az_peripherie"), async () => {
+  if (isOn("switch.az_peripherie")) {
+    await forceOn("light.kg_apple");
+  } else {
+    await forceOff("light.kg_apple");
+  }
 });
 ```
 
@@ -126,7 +129,9 @@ addRule(
 import { call, daily, isOff, randomInt, rule, sleep } from "@home-engine/sdk";
 
 rule("rollershutter-down-nighttime-if-absent", daily("22:00"), async () => {
-  if (!isOff("binary_sensor.presence_any")) return;
+  if (!isOff("binary_sensor.presence_any")) {
+    return;
+  }
   await sleep(randomInt(1, 30) * 60_000);
   if (isOff("binary_sensor.presence_any")) {
     await call("scene.turn_on", {}, { entity_id: "scene.rollershutter_night" });
@@ -148,7 +153,9 @@ import { averageSince, every, log, rule } from "@home-engine/sdk";
 
 rule("power average", every("10m"), async () => {
   const avg = await averageSince("sensor.house_power", "10m");
-  if (avg !== undefined) log.info(`Average power: ${avg.toFixed(0)} W`);
+  if (avg !== undefined) {
+    log.info(`Average power: ${avg.toFixed(0)} W`);
+  }
 });
 ```
 

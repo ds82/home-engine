@@ -40,7 +40,9 @@ async function main(): Promise<void> {
       signal: startup.signal,
     });
   } catch (err) {
-    if (startup.signal.aborted) process.exit(0);
+    if (startup.signal.aborted) {
+      process.exit(0);
+    }
     if (err instanceof ConfigError) {
       process.stderr.write(`${err.message}\n`);
     } else {

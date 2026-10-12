@@ -2,7 +2,8 @@
 // Type-checks the TypeScript samples in the documentation against the SDK types.
 //
 // Every ```ts / ```typescript block in README.md and docs/**/*.md is compiled as its own
-// module, with `@home-engine/sdk` resolved to packages/sdk/src. Errors are reported as
+// module, with `@home-engine/sdk` resolved to packages/sdk/src, and linted with the ESLint
+// `curly` rule the code uses (every block gets braces). Errors are reported as
 // `file.md:line:column`. Mark a block that is intentionally incomplete with `ts nocheck`
 // (```ts nocheck) to skip it.
 //
@@ -11,6 +12,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Linter } from "eslint";
+import tseslint from "typescript-eslint";
 import ts from "typescript";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -24,7 +27,9 @@ function parseArgs(argv) {
 function markdownFiles(root) {
   const files = [];
   const readme = join(root, "README.md");
-  if (existsSync(readme)) files.push(readme);
+  if (existsSync(readme)) {
+    files.push(readme);
+  }
   const docs = join(root, "docs");
   if (existsSync(docs)) {
     for (const entry of readdirSync(docs, { recursive: true, withFileTypes: true })) {
@@ -106,13 +111,29 @@ export function checkDocs(root) {
       problems.push(`error TS${diagnostic.code}: ${message}`);
     }
   }
+  // The samples follow the code's brace style (eslint.config.js).
+  const linter = new Linter({ configType: "flat" });
+  const lintConfig = {
+    files: ["**/*.ts"],
+    languageOptions: { parser: tseslint.parser },
+    rules: { curly: ["error", "all"] },
+  };
+  for (const [name, file] of sources) {
+    for (const m of linter.verify(file.code, lintConfig, name)) {
+      problems.push(
+        `${file.md}:${file.startLine + m.line - 1}:${m.column} - ${m.ruleId ?? "eslint"}: ${m.message}`,
+      );
+    }
+  }
   return { blocks: sources.size, problems };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { root } = parseArgs(process.argv.slice(2));
   const { blocks, problems } = checkDocs(root);
-  for (const p of problems) console.error(p);
+  for (const p of problems) {
+    console.error(p);
+  }
   console.log(`docs check: ${blocks} TypeScript block(s), ${problems.length} error(s)`);
   process.exitCode = problems.length > 0 ? 1 : 0;
 }

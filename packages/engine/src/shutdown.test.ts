@@ -79,10 +79,14 @@ describe("graceful shutdown of the engine process", () => {
       const parts = buffer.split("\n");
       buffer = parts.pop() ?? "";
       for (const part of parts) {
-        if (!part.startsWith("{")) continue;
+        if (!part.startsWith("{")) {
+          continue;
+        }
         const line = JSON.parse(part) as Record<string, unknown>;
         lines.push(line);
-        for (const w of waiters.filter((w) => line.message === w.message)) w.resolve();
+        for (const w of waiters.filter((w) => line.message === w.message)) {
+          w.resolve();
+        }
       }
     });
     let signalledAt = 0;

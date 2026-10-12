@@ -43,7 +43,9 @@ export class RuleLoader {
   async loadAll(): Promise<void> {
     const result = await discoverRuleFiles(this.options.rulesDir);
     reportDiscovery(this.options.log, this.options.rulesDir, result);
-    for (const file of result.files) await this.loadFile(file);
+    for (const file of result.files) {
+      await this.loadFile(file);
+    }
   }
 
   /**
@@ -117,7 +119,9 @@ export class RuleLoader {
 /** Converts an esbuild build failure into a RuleSyntaxError for its first located error. */
 function toSyntaxError(err: unknown): RuleSyntaxError | undefined {
   const errors = (err as { errors?: unknown }).errors;
-  if (!Array.isArray(errors)) return undefined;
+  if (!Array.isArray(errors)) {
+    return undefined;
+  }
   for (const e of errors as Array<{
     text: string;
     location: { file: string; line: number; column: number } | null;

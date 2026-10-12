@@ -16,7 +16,9 @@ import { parseOffset } from "./sun.js";
 
 /** SDK `onStartup()`: fires once each time the rule starts. */
 export function onStartup(...args: unknown[]): StartupTrigger {
-  if (args.length > 0) throw new TypeError("onStartup() takes no arguments");
+  if (args.length > 0) {
+    throw new TypeError("onStartup() takes no arguments");
+  }
   return Object.freeze({ kind: "startup" });
 }
 
@@ -25,25 +27,32 @@ const LOCAL_TIME = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
 /** Parses "HH:MM" or "HH:MM:SS"; throws for anything else. */
 export function parseLocalTime(value: unknown, what: string): { h: number; m: number; s: number } {
   const match = typeof value === "string" ? LOCAL_TIME.exec(value) : null;
-  if (!match)
+  if (!match) {
     throw new TypeError(
       `${what}: ${JSON.stringify(value)} is not a time like "07:30" or "07:30:15"`,
     );
+  }
   return { h: Number(match[1]), m: Number(match[2]), s: Number(match[3] ?? 0) };
 }
 
 /** SDK `every(interval, options?)`: fires repeatedly after the rule starts. */
 export function every(interval: unknown, options: unknown = {}): EveryTrigger {
   const ms = parseDuration(interval, "every() interval");
-  if (ms <= 0) throw new TypeError("every(): the interval must be longer than 0");
-  if (options === null || typeof options !== "object")
+  if (ms <= 0) {
+    throw new TypeError("every(): the interval must be longer than 0");
+  }
+  if (options === null || typeof options !== "object") {
     throw new TypeError("every(): options must be an object");
+  }
   const o = options as { alignTo?: unknown; immediate?: unknown };
   for (const key of Object.keys(o)) {
-    if (key !== "alignTo" && key !== "immediate")
+    if (key !== "alignTo" && key !== "immediate") {
       throw new TypeError(`every(): unknown option "${key}"`);
+    }
   }
-  if (o.alignTo !== undefined) parseLocalTime(o.alignTo, "every() alignTo");
+  if (o.alignTo !== undefined) {
+    parseLocalTime(o.alignTo, "every() alignTo");
+  }
   if (o.immediate !== undefined && typeof o.immediate !== "boolean") {
     throw new TypeError("every(): immediate must be true or false");
   }
@@ -56,8 +65,12 @@ export function every(interval: unknown, options: unknown = {}): EveryTrigger {
     kind: "every",
     interval: interval as number | string,
   };
-  if (o.alignTo !== undefined) trigger.alignTo = o.alignTo as string;
-  if (o.immediate !== undefined) trigger.immediate = o.immediate as boolean;
+  if (o.alignTo !== undefined) {
+    trigger.alignTo = o.alignTo as string;
+  }
+  if (o.immediate !== undefined) {
+    trigger.immediate = o.immediate as boolean;
+  }
   return Object.freeze(trigger);
 }
 
@@ -85,13 +98,18 @@ export function cron(expression: unknown): CronTrigger {
 /** SDK `daily(time, options?)`: every day at a local time, optionally on some weekdays. */
 export function daily(time: unknown, options: unknown = {}): DailyTrigger {
   parseLocalTime(time, "daily()");
-  if (options === null || typeof options !== "object")
+  if (options === null || typeof options !== "object") {
     throw new TypeError("daily(): options must be an object");
+  }
   const o = options as { weekdays?: unknown };
   for (const key of Object.keys(o)) {
-    if (key !== "weekdays") throw new TypeError(`daily(): unknown option "${key}"`);
+    if (key !== "weekdays") {
+      throw new TypeError(`daily(): unknown option "${key}"`);
+    }
   }
-  if (o.weekdays === undefined) return Object.freeze({ kind: "daily", time: time as string });
+  if (o.weekdays === undefined) {
+    return Object.freeze({ kind: "daily", time: time as string });
+  }
   if (
     !Array.isArray(o.weekdays) ||
     o.weekdays.length === 0 ||
@@ -118,13 +136,18 @@ export function sun(event: unknown, options: unknown = {}): SunTrigger {
   if (!(SUN_EVENTS as readonly unknown[]).includes(event)) {
     throw new TypeError(`sun(): event must be one of ${SUN_EVENTS.join(", ")}`);
   }
-  if (options === null || typeof options !== "object")
+  if (options === null || typeof options !== "object") {
     throw new TypeError("sun(): options must be an object");
+  }
   const o = options as { offset?: unknown };
   for (const key of Object.keys(o)) {
-    if (key !== "offset") throw new TypeError(`sun(): unknown option "${key}"`);
+    if (key !== "offset") {
+      throw new TypeError(`sun(): unknown option "${key}"`);
+    }
   }
-  if (o.offset === undefined) return Object.freeze({ kind: "sun", event: event as SunEventName });
+  if (o.offset === undefined) {
+    return Object.freeze({ kind: "sun", event: event as SunEventName });
+  }
   parseOffset(o.offset);
   return Object.freeze({
     kind: "sun",

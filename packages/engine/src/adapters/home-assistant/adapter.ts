@@ -26,7 +26,9 @@ export class HomeAssistantAdapter implements BackendAdapter<HomeAssistantConfig>
 
   async start(config: HomeAssistantConfig, signal: AbortSignal, log?: Logger): Promise<void> {
     signal.throwIfAborted();
-    if (!log) throw new Error("The Home Assistant adapter needs a logger");
+    if (!log) {
+      throw new Error("The Home Assistant adapter needs a logger");
+    }
     const client = new HaClient(config, log, this.options);
     this.client = client;
     const onAbort = (): void => void client.stop();
@@ -73,7 +75,9 @@ export class HomeAssistantAdapter implements BackendAdapter<HomeAssistantConfig>
   }
 
   private started(): HaClient {
-    if (!this.client) throw new Error("The Home Assistant adapter has not been started");
+    if (!this.client) {
+      throw new Error("The Home Assistant adapter has not been started");
+    }
     return this.client;
   }
 }

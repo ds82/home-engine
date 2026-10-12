@@ -62,7 +62,9 @@ export function invoke(
 ): Run {
   const runController = new AbortController();
   const signal = AbortSignal.any([scope.signal, runController.signal]);
-  if (kind === "body" || kind === "listener") scope.lastRunAt = new Date();
+  if (kind === "body" || kind === "listener") {
+    scope.lastRunAt = new Date();
+  }
 
   const done = storage
     .run({ scope, signal }, async () => {

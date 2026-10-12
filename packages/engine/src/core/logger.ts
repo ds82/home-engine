@@ -76,7 +76,9 @@ function scrubbingStream(target: NodeJS.WritableStream, secrets: readonly string
   return new Writable({
     write(chunk: Buffer | string, _encoding, callback) {
       let line = chunk.toString();
-      for (const secret of values) line = line.replaceAll(secret, REDACTED);
+      for (const secret of values) {
+        line = line.replaceAll(secret, REDACTED);
+      }
       target.write(line);
       callback();
     },

@@ -47,7 +47,9 @@ export function readHomeAssistantConfig(env: Env): HomeAssistantConfig | ConfigP
     endpoints = endpointsFromBaseUrl(url, problems);
   }
 
-  if (problems.length > 0 || !endpoints || effectiveToken === undefined) return problems;
+  if (problems.length > 0 || !endpoints || effectiveToken === undefined) {
+    return problems;
+  }
   return { ...endpoints, token: effectiveToken, supervisor: useSupervisorUrl };
 }
 

@@ -84,7 +84,9 @@ setup("doorbell burst counter", () => {
 
   listen(onChange("binary_sensor.doorbell", { to: "on" }), () => {
     presses++;
-    if (presses === 3) console.log("Someone really wants in");
+    if (presses === 3) {
+      console.log("Someone really wants in");
+    }
   });
   listen(daily("00:00"), () => {
     presses = 0;
@@ -187,7 +189,9 @@ through the container environment:
 
 ```ts
 const pushoverKey = process.env.PUSHOVER_KEY;
-if (!pushoverKey) throw new Error("PUSHOVER_KEY is not set");
+if (!pushoverKey) {
+  throw new Error("PUSHOVER_KEY is not set");
+}
 ```
 
 A rule file that throws while loading is reported as failed; its rules do not start, and the

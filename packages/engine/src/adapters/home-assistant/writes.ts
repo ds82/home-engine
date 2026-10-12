@@ -147,7 +147,9 @@ export function createWrites(
 
     const promise = (async () => {
       const session = client.connection.current;
-      if (!session || !client.isReady) throw new NotConnectedError(service);
+      if (!session || !client.isReady) {
+        throw new NotConnectedError(service);
+      }
       ruleLog.debug({ service, target, data }, `Calling ${description}`);
       try {
         const result = await trackedServiceCall(client.attribution, session, ruleId, {
@@ -159,9 +161,12 @@ export function createWrites(
         });
         return options.returnResponse ? result.response : undefined;
       } catch (err) {
-        if (err instanceof HaCommandError)
+        if (err instanceof HaCommandError) {
           throw new ServiceCallError(service, err.code, haMessage(err));
-        if (err instanceof HaDisconnectedError) throw new NotConnectedError(service);
+        }
+        if (err instanceof HaDisconnectedError) {
+          throw new NotConnectedError(service);
+        }
         throw err;
       }
     })();
@@ -216,7 +221,9 @@ export function createWrites(
     }
     const promise = (async () => {
       const session = client.connection.current;
-      if (!session || !client.isReady) throw new NotConnectedError(`fire ${eventType}`);
+      if (!session || !client.isReady) {
+        throw new NotConnectedError(`fire ${eventType}`);
+      }
       ruleLog.debug({ eventType, data: payload }, `Firing ${eventType}`);
       try {
         await client.attribution.track(ruleId, () =>
@@ -229,9 +236,12 @@ export function createWrites(
           }),
         );
       } catch (err) {
-        if (err instanceof HaCommandError)
+        if (err instanceof HaCommandError) {
           throw new ServiceCallError(`fire ${eventType}`, err.code, haMessage(err));
-        if (err instanceof HaDisconnectedError) throw new NotConnectedError(`fire ${eventType}`);
+        }
+        if (err instanceof HaDisconnectedError) {
+          throw new NotConnectedError(`fire ${eventType}`);
+        }
         throw err;
       }
     })();
@@ -251,7 +261,9 @@ export function createWrites(
     attributes: Record<string, unknown>,
   ): Promise<void> => {
     const what = `setState ${entity}`;
-    if (!client.isReady) throw new NotConnectedError(what);
+    if (!client.isReady) {
+      throw new NotConnectedError(what);
+    }
     try {
       await client.attribution.track(ruleId, () =>
         client.rest<HaState>("POST", `/states/${encodeURIComponent(entity)}`, {
@@ -260,8 +272,9 @@ export function createWrites(
         }),
       );
     } catch (err) {
-      if (err instanceof HaRestError)
+      if (err instanceof HaRestError) {
         throw new ServiceCallError(what, `http_${err.status}`, err.haMessage);
+      }
       throw err;
     }
   };
@@ -281,7 +294,9 @@ export function createWrites(
     }
     known?.release();
     const release = scope.onDispose(() => {
-      if (virtualEntities.get(entity)?.scope === scope) virtualEntities.delete(entity);
+      if (virtualEntities.get(entity)?.scope === scope) {
+        virtualEntities.delete(entity);
+      }
     });
     virtualEntities.set(entity, { scope, state, attributes, release });
   };
@@ -307,13 +322,17 @@ export function createWrites(
       return Promise.resolve();
     }
     const run = currentRun();
-    if (run) remember(run.scope, entity, value, attrs);
+    if (run) {
+      remember(run.scope, entity, value, attrs);
+    }
     ruleLog.debug({ entity, state: value, attributes: attrs }, `Setting ${entity} to ${value}`);
     return trackWrite(publishState(ruleId, entity, value, attrs), `setState ${entity}`);
   }
 
   client.onReady(() => {
-    if (virtualEntities.size === 0) return;
+    if (virtualEntities.size === 0) {
+      return;
+    }
     log.info({ count: virtualEntities.size }, "Republishing virtual entities");
     for (const [entity, v] of virtualEntities) {
       publishState(v.scope.ruleId, entity, v.state, v.attributes).catch((err: unknown) =>
@@ -330,7 +349,9 @@ export function createWrites(
         );
       }
       const session = client.connection.current;
-      if (!session || !client.isReady) throw new NotConnectedError(message.type);
+      if (!session || !client.isReady) {
+        throw new NotConnectedError(message.type);
+      }
       const { id: _ignored, ...rest } = message as Record<string, unknown> & { type: string };
       void _ignored;
       return session.command<T>(rest as Record<string, unknown> & { type: string });
@@ -340,11 +361,14 @@ export function createWrites(
   /** Registers a status callback for the calling rule; released on unload. */
   const statusListener =
     (fn: string, wanted: boolean) => (callback: () => void | Promise<void>) => {
-      if (typeof callback !== "function")
+      if (typeof callback !== "function") {
         throw new TypeError(`connection.${fn}(): the callback must be a function`);
+      }
       const run = requireRun(`connection.${fn}`);
       const sub = client.onStatusChange((connected) => {
-        if (connected === wanted) invoke(run.scope, "callback", () => callback());
+        if (connected === wanted) {
+          invoke(run.scope, "callback", () => callback());
+        }
       });
       const remove = run.scope.onDispose(() => sub.dispose());
       return {

@@ -31,7 +31,9 @@ export interface InstallOptions {
 export async function installRuleDependencies(options: InstallOptions): Promise<InstallResult> {
   const { rulesDir, dataDir, log } = options;
   const manifest = join(rulesDir, "package.json");
-  if (!existsSync(manifest)) return "no-manifest";
+  if (!existsSync(manifest)) {
+    return "no-manifest";
+  }
   if (options.enabled === false) {
     log.info("NPM_INSTALL=false: not installing rule dependencies");
     return "disabled";
@@ -56,8 +58,11 @@ export async function installRuleDependencies(options: InstallOptions): Promise<
 
   await mkdir(depsDir, { recursive: true });
   await copyFile(manifest, join(depsDir, "package.json"));
-  if (hasLock) await copyFile(lockfile, join(depsDir, "package-lock.json"));
-  else await rm(join(depsDir, "package-lock.json"), { force: true });
+  if (hasLock) {
+    await copyFile(lockfile, join(depsDir, "package-lock.json"));
+  } else {
+    await rm(join(depsDir, "package-lock.json"), { force: true });
+  }
   await rm(hashFile, { force: true });
 
   const args = [hasLock ? "ci" : "install", "--omit=dev", "--no-audit", "--no-fund"];
@@ -88,7 +93,11 @@ export async function installRuleDependencies(options: InstallOptions): Promise<
 async function linkNodeModules(dataDir: string, target: string): Promise<void> {
   const link = join(dataDir, "node_modules");
   const stat = await lstat(link).catch(() => undefined);
-  if (stat?.isSymbolicLink()) return;
-  if (stat) await rm(link, { recursive: true, force: true });
+  if (stat?.isSymbolicLink()) {
+    return;
+  }
+  if (stat) {
+    await rm(link, { recursive: true, force: true });
+  }
   await symlink(target, link, "dir");
 }

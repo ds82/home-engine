@@ -48,8 +48,11 @@ export async function discoverRuleFiles(rulesDir: string): Promise<DiscoveryResu
   const files: string[] = [];
   const conflicts: IdConflict[] = [];
   for (const [idBase, group] of byIdBase) {
-    if (group.length === 1) files.push(...group);
-    else conflicts.push({ idBase, files: group.sort() });
+    if (group.length === 1) {
+      files.push(...group);
+    } else {
+      conflicts.push({ idBase, files: group.sort() });
+    }
   }
   conflicts.sort((a, b) => a.idBase.localeCompare(b.idBase));
   return { files: files.sort(), conflicts };
@@ -76,7 +79,9 @@ async function walk(root: string, dir: string, out: string[]): Promise<void> {
     const path = join(dir, entry.name);
     const rel = relative(root, path).split(sep).join("/");
     if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || /^[_.]/.test(entry.name)) continue;
+      if (entry.name === "node_modules" || /^[_.]/.test(entry.name)) {
+        continue;
+      }
       await walk(root, path, out);
     } else if (entry.isFile() && isRuleFile(rel)) {
       out.push(rel);

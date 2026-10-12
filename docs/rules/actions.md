@@ -23,7 +23,9 @@ import { getEntities, getNumber, isOn, onChange, rule } from "@home-engine/sdk";
 
 rule("too warm", onChange("sensor.living_room_temperature"), () => {
   const temperature = getNumber("sensor.living_room_temperature");
-  if (temperature === undefined) return; // unknown, unavailable or not a number
+  if (temperature === undefined) {
+    return;
+  } // unknown, unavailable or not a number
   if (temperature > 26 && !isOn("switch.fan")) {
     const open = getEntities("binary_sensor.*_window").filter((w) => w.state === "on");
     console.log(`${open.length} windows open at ${temperature} °C`);
@@ -122,9 +124,9 @@ machine, for example to show a computed value on a dashboard:
 ```ts
 import { getNumber, onChange, rule, setState } from "@home-engine/sdk";
 
-rule("comfort", onChange("sensor.living_room_humidity"), () => {
+rule("comfort", onChange("sensor.living_room_humidity"), async () => {
   const humidity = getNumber("sensor.living_room_humidity") ?? 0;
-  void setState("sensor.living_room_comfort", humidity < 60 ? "good" : "humid", {
+  await setState("sensor.living_room_comfort", humidity < 60 ? "good" : "humid", {
     friendly_name: "Comfort",
   });
 });
@@ -145,11 +147,19 @@ If an entity needs a value right after the engine starts, store it and set it ag
 ```ts
 import { onChange, onStartup, rule, setState, store } from "@home-engine/sdk";
 
-rule("last motion", [onStartup(), onChange("binary_sensor.hall_motion", { to: "on" })], (e) => {
-  if (e.type === "state") store.set("lastMotion", new Date().toISOString());
-  const last = store.get<string>("lastMotion");
-  if (last) void setState("sensor.home_engine_last_motion", last, { device_class: "timestamp" });
-});
+rule(
+  "last motion",
+  [onStartup(), onChange("binary_sensor.hall_motion", { to: "on" })],
+  async (e) => {
+    if (e.type === "state") {
+      store.set("lastMotion", new Date().toISOString());
+    }
+    const last = store.get<string>("lastMotion");
+    if (last) {
+      await setState("sensor.home_engine_last_motion", last, { device_class: "timestamp" });
+    }
+  },
+);
 ```
 
 ## Raw WebSocket commands and the connection

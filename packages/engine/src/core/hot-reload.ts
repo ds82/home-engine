@@ -91,7 +91,9 @@ export class HotReloader {
     clearTimeout(this.timer);
     await this.watcher?.close();
     this.watcher = undefined;
-    if (this.currentMode !== "disabled") this.currentMode = "unavailable";
+    if (this.currentMode !== "disabled") {
+      this.currentMode = "unavailable";
+    }
     await this.queue;
   }
 
@@ -121,13 +123,17 @@ export class HotReloader {
     });
     await ready;
     // A setup failure already switched watchers; wait for the replacement to be ready.
-    if (failedEarly !== undefined) await this.replacing;
+    if (failedEarly !== undefined) {
+      await this.replacing;
+    }
   }
 
   /** Native watching failed: fall back to polling (auto), or give up (WATCH_POLL=false). */
   private async onWatchError(watcher: Watcher, mode: WatchMode, err: unknown): Promise<void> {
     const { log } = this.options;
-    if (watcher !== this.watcher || this.stopped) return;
+    if (watcher !== this.watcher || this.stopped) {
+      return;
+    }
     const reason = (err as NodeJS.ErrnoException).code ?? String(err);
     const poll = this.options.watchPoll ?? "auto";
 
@@ -184,14 +190,17 @@ export class HotReloader {
       const affected = new Set<string>();
       for (const path of paths) {
         affected.add(rel(path));
-        for (const dependent of loader.graph.dependents(path)) affected.add(dependent);
+        for (const dependent of loader.graph.dependents(path)) {
+          affected.add(dependent);
+        }
       }
 
       const discovery = await discoverRuleFiles(this.rulesDir);
       const valid = new Set(discovery.files);
       const conflicting = discovery.conflicts.filter((c) => c.files.some((f) => affected.has(f)));
-      if (conflicting.length > 0)
+      if (conflicting.length > 0) {
         reportDiscovery(log, this.rulesDir, { files: [], conflicts: conflicting });
+      }
 
       const summary: ReloadSummary = { reloaded: [], unloaded: [] };
       for (const file of [...affected].sort()) {
@@ -204,7 +213,9 @@ export class HotReloader {
         }
       }
       if (summary.reloaded.length + summary.unloaded.length > 0) {
-        for (const listener of [...this.listeners]) listener(summary);
+        for (const listener of [...this.listeners]) {
+          listener(summary);
+        }
       }
     } catch (err) {
       log.error({ err }, "Reloading rule files failed");

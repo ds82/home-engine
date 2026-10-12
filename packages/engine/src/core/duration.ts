@@ -12,7 +12,9 @@ const UNITS: Record<string, number> = {
 /** Converts a duration to milliseconds. Throws for malformed or negative values. */
 export function parseDuration(value: unknown, what = "duration"): number {
   if (typeof value === "number") {
-    if (Number.isFinite(value) && value >= 0) return value;
+    if (Number.isFinite(value) && value >= 0) {
+      return value;
+    }
     throw new TypeError(`Invalid ${what}: ${value} (expected milliseconds >= 0)`);
   }
   if (typeof value === "string") {
@@ -25,7 +27,9 @@ export function parseDuration(value: unknown, what = "duration"): number {
       total += Number(match[1]) * (UNITS[match[2] as string] ?? 0);
       consumed = part.lastIndex;
     }
-    if (text !== "" && consumed === text.length) return total;
+    if (text !== "" && consumed === text.length) {
+      return total;
+    }
   }
   throw new TypeError(
     `Invalid ${what}: ${JSON.stringify(value)} (use milliseconds or e.g. "500ms", "30s", "5m", "1h30m", "1d")`,

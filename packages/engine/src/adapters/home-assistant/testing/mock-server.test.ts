@@ -19,7 +19,9 @@ class RawClient {
       const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
       this.log.push(msg);
       const waiter = this.waiters.find((w) => w.match(msg));
-      if (!waiter) return void this.messages.push(msg);
+      if (!waiter) {
+        return void this.messages.push(msg);
+      }
       this.waiters.splice(this.waiters.indexOf(waiter), 1);
       waiter.resolve(msg);
     });
@@ -202,7 +204,9 @@ describe("MockHomeAssistant", () => {
     });
     expect(ok.success).toBe(true);
     const [sub] = ha.triggerSubscriptions();
-    if (!sub) throw new Error("expected a trigger subscription");
+    if (!sub) {
+      throw new Error("expected a trigger subscription");
+    }
     expect(sub.trigger).toMatchObject({ platform: "numeric_state" });
 
     ha.fireTrigger(sub, { platform: "numeric_state", entity_id: "sensor.humidity" });

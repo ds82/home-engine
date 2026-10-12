@@ -44,7 +44,9 @@ async function run(trigger: Trigger, startIso: string, days: number, timeZone = 
   }
   const changeTimeZone = (next: string): void => {
     tz = next;
-    for (const l of siteListeners) l();
+    for (const l of siteListeners) {
+      l();
+    }
   };
   return {
     events,

@@ -86,7 +86,9 @@ export class RuleRegistry {
       this.fileFailed(file, collision);
       return;
     }
-    if (fileScope) this.fileScopes.set(file, fileScope);
+    if (fileScope) {
+      this.fileScopes.set(file, fileScope);
+    }
 
     const entries: RuleEntry[] = [];
     this.rules.set(file, entries);
@@ -101,7 +103,9 @@ export class RuleRegistry {
             : undefined;
       const entry: RuleEntry = { definition, loadedAt, disabledBy, started: undefined };
       entries.push(entry);
-      if (!disabledBy) entry.started = await startRule(definition, this.runner);
+      if (!disabledBy) {
+        entry.started = await startRule(definition, this.runner);
+      }
     }
   }
 
@@ -124,7 +128,9 @@ export class RuleRegistry {
     this.files.delete(file);
     this.fileScopes.delete(file);
     const tracked = async (id: string, stop: (() => Promise<void>) | undefined) => {
-      if (!stop) return;
+      if (!stop) {
+        return;
+      }
       this.unloading.add(id);
       try {
         await stop();
@@ -163,10 +169,17 @@ export class RuleRegistry {
   summary(): { loaded: number; disabled: number; failed: number } {
     const counts = { loaded: 0, disabled: 0, failed: 0 };
     for (const rule of this.listRules()) {
-      if (rule.status === "running") counts.loaded++;
-      else counts[rule.status]++;
+      if (rule.status === "running") {
+        counts.loaded++;
+      } else {
+        counts[rule.status]++;
+      }
     }
-    for (const file of this.files.values()) if (file.status === "failed") counts.failed++;
+    for (const file of this.files.values()) {
+      if (file.status === "failed") {
+        counts.failed++;
+      }
+    }
     return counts;
   }
 
@@ -177,7 +190,9 @@ export class RuleRegistry {
   rule(id: string): RuleInfo | undefined {
     for (const entries of this.rules.values()) {
       const entry = entries.find((e) => e.definition.id === id);
-      if (entry) return this.info(entry);
+      if (entry) {
+        return this.info(entry);
+      }
     }
     return undefined;
   }
@@ -212,7 +227,9 @@ export class RuleRegistry {
     const nextRuns: RuleInfo["nextRuns"] = [];
     for (const armed of scope?.armedTriggers ?? []) {
       const next = armed.nextRun?.();
-      if (next) nextRuns.push({ kind: armed.kind, nextRun: next });
+      if (next) {
+        nextRuns.push({ kind: armed.kind, nextRun: next });
+      }
     }
     return { nextRun: earliest(nextRuns.map((n) => n.nextRun)), nextRuns };
   }
@@ -220,7 +237,9 @@ export class RuleRegistry {
   private findIdCollision(file: string, definitions: readonly RuleDefinition[]): Error | undefined {
     for (const definition of definitions) {
       for (const [otherFile, entries] of this.rules) {
-        if (otherFile === file) continue;
+        if (otherFile === file) {
+          continue;
+        }
         if (entries.some((e) => e.definition.id === definition.id)) {
           return new Error(
             `Rule ID "${definition.id}" in ${file} is already used by a rule in ${otherFile}`,

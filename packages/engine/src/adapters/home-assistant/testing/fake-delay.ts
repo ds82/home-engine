@@ -26,14 +26,19 @@ export class FakeDelay {
         },
       };
       const waiter = this.waiters.shift();
-      if (waiter) waiter(pending);
-      else this.queue.push(pending);
+      if (waiter) {
+        waiter(pending);
+      } else {
+        this.queue.push(pending);
+      }
     });
 
   /** Resolves with the next requested delay (already requested or upcoming). */
   next(): Promise<PendingDelay> {
     const queued = this.queue.shift();
-    if (queued) return Promise.resolve(queued);
+    if (queued) {
+      return Promise.resolve(queued);
+    }
     return new Promise((resolve) => this.waiters.push(resolve));
   }
 

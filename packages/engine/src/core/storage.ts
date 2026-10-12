@@ -25,7 +25,9 @@ export interface KeyValueStore {
 
 /** File name of a namespace; a rule ID can never map to the shared file. */
 export function namespaceFile(namespace: string): string {
-  if (namespace === SHARED_NAMESPACE) return `${SHARED_NAMESPACE}.json`;
+  if (namespace === SHARED_NAMESPACE) {
+    return `${SHARED_NAMESPACE}.json`;
+  }
   return `${encodeURIComponent(namespace).replace(/^_/, "%5F").replace(/\./g, "%2E")}.json`;
 }
 
@@ -37,15 +39,21 @@ export function checkJson(value: unknown, fn: string, path = "value", seen = new
   const fail = (what: string): never => {
     throw new TypeError(`${fn}(): ${path} ${what}; stored values must be plain JSON data`);
   };
-  if (value === null || typeof value === "string" || typeof value === "boolean") return;
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return;
+  }
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) fail(`is ${value}`);
+    if (!Number.isFinite(value)) {
+      fail(`is ${value}`);
+    }
     return;
   }
   if (typeof value !== "object") {
     fail(value === undefined ? "is undefined" : `is a ${typeof value}`);
   }
-  if (seen.has(value)) fail("is a circular reference");
+  if (seen.has(value)) {
+    fail("is a circular reference");
+  }
   const proto = Object.getPrototypeOf(value) as unknown;
   if (!Array.isArray(value) && proto !== Object.prototype && proto !== null) {
     const name = (value as object).constructor?.name ?? "object";
@@ -89,9 +97,13 @@ export class Storage {
 
   /** Reads every namespace file. Unreadable files are moved aside and start empty. */
   async load(): Promise<void> {
-    if (!existsSync(this.dir)) return;
+    if (!existsSync(this.dir)) {
+      return;
+    }
     for (const name of await readdir(this.dir)) {
-      if (!name.endsWith(".json")) continue;
+      if (!name.endsWith(".json")) {
+        continue;
+      }
       const namespace =
         name === `${SHARED_NAMESPACE}.json`
           ? SHARED_NAMESPACE
@@ -119,7 +131,9 @@ export class Storage {
   namespace(namespace: string): KeyValueStore {
     const values = (): Map<string, unknown> => {
       let map = this.namespaces.get(namespace);
-      if (!map) this.namespaces.set(namespace, (map = new Map()));
+      if (!map) {
+        this.namespaces.set(namespace, (map = new Map()));
+      }
       return map;
     };
     const fn = namespace === SHARED_NAMESPACE ? "shared" : "store";
@@ -139,7 +153,9 @@ export class Storage {
       },
       delete: (key) => {
         const deleted = values().delete(checkKey("delete", key));
-        if (deleted) this.markDirty(namespace);
+        if (deleted) {
+          this.markDirty(namespace);
+        }
         return deleted;
       },
       keys: () => [...values().keys()],
@@ -148,7 +164,9 @@ export class Storage {
 
   /** Writes all pending changes now; resolves when they are on disk. */
   flush(): Promise<void> {
-    if (this.timer) clearTimeout(this.timer);
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
     this.timer = undefined;
     const pending = [...this.dirty];
     this.dirty.clear();
@@ -161,7 +179,9 @@ export class Storage {
       )}\n`,
     }));
     this.writing = this.writing.then(async () => {
-      if (snapshots.length === 0) return;
+      if (snapshots.length === 0) {
+        return;
+      }
       await mkdir(this.dir, { recursive: true });
       for (const { file, text } of snapshots) {
         try {

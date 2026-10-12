@@ -13,7 +13,9 @@ export interface FetchOptions {
 /** `http(s)://host[:port][/path]` → `ws(s)://host[:port][/path]/api/websocket`. */
 export function websocketUrl(base: string): string {
   const url = new URL(base);
-  if (url.protocol === "ws:" || url.protocol === "wss:") return url.toString();
+  if (url.protocol === "ws:" || url.protocol === "wss:") {
+    return url.toString();
+  }
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = `${url.pathname.replace(/\/+$/, "")}/api/websocket`;
   return url.toString();
@@ -63,8 +65,9 @@ export async function fetchTypingsInput(options: FetchOptions): Promise<TypingsI
       } else if (msg.type === "result" && typeof msg.id === "number") {
         const waiter = pending.get(msg.id);
         pending.delete(msg.id);
-        if (msg.success) waiter?.resolve(msg.result);
-        else {
+        if (msg.success) {
+          waiter?.resolve(msg.result);
+        } else {
           const error = msg.error as { message?: string } | undefined;
           waiter?.reject(new Error(error?.message ?? "Command failed"));
         }

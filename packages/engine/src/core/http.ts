@@ -72,7 +72,9 @@ export class HttpServer {
       this.log.info("HTTP server disabled (HTTP_PORT=0)");
       return undefined;
     }
-    if (!this.options.eventLoopLag) this.monitor = eventLoopLagMonitor();
+    if (!this.options.eventLoopLag) {
+      this.monitor = eventLoopLagMonitor();
+    }
     const server = createServer((req, res) => this.handle(req, res));
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
@@ -92,7 +94,9 @@ export class HttpServer {
     this.monitor = undefined;
     const server = this.server;
     this.server = undefined;
-    if (!server) return;
+    if (!server) {
+      return;
+    }
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
@@ -124,7 +128,9 @@ export class HttpServer {
       },
     };
     const route = routes[path];
-    if (!route) return send(404, { error: "not found", routes: Object.keys(routes) });
+    if (!route) {
+      return send(404, { error: "not found", routes: Object.keys(routes) });
+    }
     if (req.method !== "GET" && req.method !== "HEAD") {
       res.setHeader("allow", "GET, HEAD");
       return send(405, { error: "method not allowed" });

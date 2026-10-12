@@ -82,7 +82,9 @@ For decisions inside a rule, use the sun helpers. They work for the current loca
 import { isAfterSunset, isBeforeSunrise, isSunUp, nextSun, onChange, rule } from "@home-engine/sdk";
 
 rule("light only in the dark", onChange("binary_sensor.hall_motion", { to: "on" }), () => {
-  if (isSunUp()) return;
+  if (isSunUp()) {
+    return;
+  }
   if (isAfterSunset() || isBeforeSunrise()) {
     // switch the light on
   }

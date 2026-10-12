@@ -67,7 +67,9 @@ export class RuleScopeImpl implements RuleScope {
     this.activeTimers++;
     let done = false;
     return () => {
-      if (done) return;
+      if (done) {
+        return;
+      }
       done = true;
       this.activeTimers--;
     };

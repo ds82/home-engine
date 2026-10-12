@@ -20,7 +20,9 @@ export function triggerIdentity(position: string, trigger: Trigger): string {
 }
 
 function sortKeys(value: unknown): unknown {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
   return Object.fromEntries(
     Object.keys(value)
       .sort()

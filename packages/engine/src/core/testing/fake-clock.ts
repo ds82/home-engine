@@ -29,7 +29,9 @@ export class FakeClock implements Clock {
     const end = this.current + ms;
     for (;;) {
       const due = [...this.timers].filter((t) => t.at <= end).sort((a, b) => a.at - b.at)[0];
-      if (!due) break;
+      if (!due) {
+        break;
+      }
       this.timers.delete(due);
       this.current = Math.max(this.current, due.at);
       due.fn();

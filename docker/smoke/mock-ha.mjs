@@ -12,6 +12,8 @@ let motion = false;
 setInterval(() => {
   motion = !motion;
   ha.setState("binary_sensor.porch_motion", motion ? "on" : "off");
-  if (ha.getState("light.porch")?.state === "on") console.log("LIGHT_ON");
+  if (ha.getState("light.porch")?.state === "on") {
+    console.log("LIGHT_ON");
+  }
 }, 1000);
 process.on("SIGTERM", () => process.exit(0));

@@ -62,7 +62,9 @@ const ha = new MockHomeAssistant({ tokens: [TOKEN] });
 for (let i = 0; i < ENTITIES - 10; i++) {
   ha.setState(`sensor.load_${i}`, "0", { unit_of_measurement: "W", sentAt: 0 }, { silent: true });
 }
-for (let i = 0; i < 10; i++) ha.setState(`binary_sensor.load_${i}`, "off", {}, { silent: true });
+for (let i = 0; i < 10; i++) {
+  ha.setState(`binary_sensor.load_${i}`, "off", {}, { silent: true });
+}
 await ha.start();
 
 // The engine logs to nowhere: the test measures processing, not log output.
@@ -91,7 +93,11 @@ if (rules.length !== 50 || rules.some((r) => r.status !== "running")) {
 // Half the changes hit entities watched by rules, half hit the other ~4,600 sensors (which
 // the engine still receives, caches and matches against all triggers).
 const watched = [];
-for (let f = 0; f < 10; f++) for (let k = 0; k < 4; k++) watched.push(`sensor.load_${f * 40 + k}`);
+for (let f = 0; f < 10; f++) {
+  for (let k = 0; k < 4; k++) {
+    watched.push(`sensor.load_${f * 40 + k}`);
+  }
+}
 let n = 0;
 const send = () => {
   n++;
@@ -123,7 +129,9 @@ await new Promise((resolve) => {
       send();
       due += interval;
     }
-    if (now - started >= SECONDS * 1000) return resolve();
+    if (now - started >= SECONDS * 1000) {
+      return resolve();
+    }
     setTimeout(tick, Math.max(0, due - performance.now()));
   };
   tick();

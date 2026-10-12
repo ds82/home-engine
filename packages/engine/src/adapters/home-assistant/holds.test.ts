@@ -46,7 +46,9 @@ describe("holds (for), restoration and immediate", () => {
   });
 
   afterEach(async () => {
-    for (const r of running.splice(0)) await r.stop();
+    for (const r of running.splice(0)) {
+      await r.stop();
+    }
     await client.stop();
     await ha.stop();
     await fired.flush();
@@ -67,7 +69,9 @@ describe("holds (for), restoration and immediate", () => {
 
   /** Starts a triggered rule; the returned list collects the state events of its body. */
   async function start(triggers: Trigger | Trigger[], id = "test#rule"): Promise<StateEvent[]> {
-    if (!client.isReady) await client.start();
+    if (!client.isReady) {
+      await client.start();
+    }
     const events: StateEvent[] = [];
     const definition: RuleDefinition = {
       kind: "triggered",
@@ -83,7 +87,9 @@ describe("holds (for), restoration and immediate", () => {
   }
 
   async function unloadAll(): Promise<void> {
-    for (const r of running.splice(0)) await r.stop();
+    for (const r of running.splice(0)) {
+      await r.stop();
+    }
   }
 
   async function flush(): Promise<void> {
@@ -327,7 +333,9 @@ describe("holds (for), restoration and immediate", () => {
     });
 
     it("restores listeners registered during setup under their explicit id", async () => {
-      if (!client.isReady) await client.start();
+      if (!client.isReady) {
+        await client.start();
+      }
       set("light.a", "on", -6 * MIN);
       await flush();
       const events: StateEvent[] = [];
@@ -338,7 +346,9 @@ describe("holds (for), restoration and immediate", () => {
         file: "test.ts",
         options: {},
         fn: () => {
-          if (extraFirst) listen(onChange("light.other"), () => {});
+          if (extraFirst) {
+            listen(onChange("light.other"), () => {});
+          }
           listen(
             onChange("light.a", { to: "on", for: "10m" }),
             (e) => void events.push(e as StateEvent),
@@ -367,7 +377,9 @@ describe("holds (for), restoration and immediate", () => {
     });
 
     it("does not restore holds for listeners registered after setup", async () => {
-      if (!client.isReady) await client.start();
+      if (!client.isReady) {
+        await client.start();
+      }
       set("light.a", "on", -6 * MIN);
       set("light.trigger", "off");
       await flush();
@@ -414,7 +426,9 @@ describe("holds (for), restoration and immediate", () => {
     });
 
     it("evaluates late listeners at the time listen() is called", async () => {
-      if (!client.isReady) await client.start();
+      if (!client.isReady) {
+        await client.start();
+      }
       set("light.porch", "on");
       set("light.trigger", "off");
       await flush();

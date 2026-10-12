@@ -9,7 +9,9 @@ import { logCapture } from "./testing/log-capture.js";
 describe("rule file discovery", () => {
   const dirs: string[] = [];
   afterEach(() => {
-    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of dirs.splice(0)) {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 
   function rulesDir(files: string[]): string {

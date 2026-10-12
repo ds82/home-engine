@@ -31,4 +31,9 @@ export default tseslint.config(
     },
   },
   prettier,
+  {
+    // Every if/else/for/while body gets braces, also one-liners. Must come after `prettier`,
+    // which turns `curly` off.
+    rules: { curly: ["error", "all"] },
+  },
 );

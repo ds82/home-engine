@@ -42,19 +42,33 @@ const union = (values: readonly string[]): string => values.map(quote).join(" | 
 
 /** The TypeScript type of an attribute's current value. */
 function valueType(value: unknown): string {
-  if (typeof value === "number") return "number";
-  if (typeof value === "string") return "string";
-  if (typeof value === "boolean") return "boolean";
-  if (Array.isArray(value)) return "unknown[]";
-  if (value !== null && typeof value === "object") return "Record<string, unknown>";
+  if (typeof value === "number") {
+    return "number";
+  }
+  if (typeof value === "string") {
+    return "string";
+  }
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+  if (Array.isArray(value)) {
+    return "unknown[]";
+  }
+  if (value !== null && typeof value === "object") {
+    return "Record<string, unknown>";
+  }
   return "unknown";
 }
 
 function stateType(entityId: string): string {
   const domain = entityId.split(".")[0] ?? "";
-  if (ON_OFF_DOMAINS.has(domain)) return union(["on", "off", "unavailable", "unknown"]);
+  if (ON_OFF_DOMAINS.has(domain)) {
+    return union(["on", "off", "unavailable", "unknown"]);
+  }
   const known = STATE_UNIONS[domain];
-  if (known?.length) return union([...known, "unavailable", "unknown"]);
+  if (known?.length) {
+    return union([...known, "unavailable", "unknown"]);
+  }
   return "string";
 }
 
@@ -67,7 +81,9 @@ function attributesType(attributes: Record<string, unknown>, indent: string): st
 /** The TypeScript type of a service field, from its selector. */
 function selectorType(field: Record<string, unknown>): string {
   const selector = field.selector;
-  if (typeof selector !== "object" || selector === null) return "unknown";
+  if (typeof selector !== "object" || selector === null) {
+    return "unknown";
+  }
   const [kind, config] = Object.entries(selector)[0] ?? [];
   const options = (config as { options?: unknown } | null)?.options;
   const multiple = (config as { multiple?: unknown } | null)?.multiple === true;
@@ -99,7 +115,9 @@ function selectorType(field: Record<string, unknown>): string {
       case "object":
         return "unknown";
       case "select": {
-        if (!Array.isArray(options) || options.length === 0) return "string";
+        if (!Array.isArray(options) || options.length === 0) {
+          return "string";
+        }
         const values = options.map((o: unknown) =>
           typeof o === "object" && o !== null ? String((o as { value: unknown }).value) : String(o),
         );

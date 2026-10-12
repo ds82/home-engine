@@ -32,7 +32,9 @@ describe("change cause", () => {
   });
 
   afterEach(async () => {
-    for (const r of rules.splice(0)) await r.stop();
+    for (const r of rules.splice(0)) {
+      await r.stop();
+    }
     await client.stop();
     await ha.stop();
   });
@@ -60,7 +62,9 @@ describe("change cause", () => {
 
   function turnOn(ruleId: string, entity = "light.hall") {
     const session = client.connection.current;
-    if (!session) throw new Error("not connected");
+    if (!session) {
+      throw new Error("not connected");
+    }
     return trackedServiceCall(client.attribution, session, ruleId, {
       domain: "light",
       service: "turn_on",
@@ -70,7 +74,9 @@ describe("change cause", () => {
 
   async function flush(): Promise<void> {
     await client.connection.current?.command({ type: "ping" });
-    for (let i = 0; i < 3; i++) await new Promise((r) => setImmediate(r));
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setImmediate(r));
+    }
   }
 
   it("names the rule whose write caused a change", async () => {
@@ -129,7 +135,9 @@ describe("change cause", () => {
     });
     const events = await watch("light.hall");
     const session = client.connection.current;
-    if (!session) throw new Error("not connected");
+    if (!session) {
+      throw new Error("not connected");
+    }
     void trackedServiceCall(client.attribution, session, "hall#slow", {
       domain: "light",
       service: "slow_on",
@@ -152,7 +160,9 @@ describe("change cause", () => {
     });
     const events = await watch("light.hall");
     const session = client.connection.current;
-    if (!session) throw new Error("not connected");
+    if (!session) {
+      throw new Error("not connected");
+    }
     const write = trackedServiceCall(client.attribution, session, "hall#auto-light", {
       domain: "light",
       service: "held_on",

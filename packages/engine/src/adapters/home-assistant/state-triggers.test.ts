@@ -33,14 +33,18 @@ describe("onChange arming", () => {
   });
 
   afterEach(async () => {
-    for (const r of rules.splice(0)) await r.stop();
+    for (const r of rules.splice(0)) {
+      await r.stop();
+    }
     await client.stop();
     await ha.stop();
   });
 
   /** Starts a rule with the given triggers; returns the events its body received. */
   async function arm(triggers: Trigger | Trigger[]): Promise<StateEvent[]> {
-    if (!client.isReady) await client.start();
+    if (!client.isReady) {
+      await client.start();
+    }
     const events: StateEvent[] = [];
     const definition: RuleDefinition = {
       kind: "triggered",
@@ -49,7 +53,9 @@ describe("onChange arming", () => {
       file: "test.ts",
       triggers,
       body: (e: RuleEvent) => {
-        if (e.type === "state") events.push(e);
+        if (e.type === "state") {
+          events.push(e);
+        }
       },
       options: {},
     };
@@ -148,7 +154,9 @@ describe("onChange arming", () => {
   it("matches arrays of values and non-string filter values", async () => {
     ha.setState("climate.living", "off");
     const events = await arm(onChange("climate.living", { to: ["heat", "cool"] }));
-    for (const s of ["heat", "off", "cool", "dry"]) ha.setState("climate.living", s);
+    for (const s of ["heat", "off", "cool", "dry"]) {
+      ha.setState("climate.living", s);
+    }
     await flush();
     expect(states(events).map((s) => s[2])).toEqual(["heat", "cool"]);
   });

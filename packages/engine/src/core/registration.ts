@@ -119,14 +119,18 @@ export async function evaluateFile(
     ]);
   } catch (err) {
     await options.fileScope?.dispose();
-    if (err instanceof FileEvaluationError) throw err;
+    if (err instanceof FileEvaluationError) {
+      throw err;
+    }
     throw new FileEvaluationError(file, `Loading ${file} failed: ${errorMessage(err)}`, {
       cause: err,
     });
   } finally {
     clearTimeout(timer);
     // Late registrations (after a timeout) find the slot empty and throw.
-    if (current === registry) current = undefined;
+    if (current === registry) {
+      current = undefined;
+    }
   }
   return registry.rules;
 }
@@ -205,7 +209,9 @@ function add(registry: FileRegistry, definition: RuleDefinition): void {
 }
 
 function ruleId(file: string, name: string, explicit: string | undefined): string {
-  if (explicit === undefined) return `${fileIdBase(file)}#${name}`;
+  if (explicit === undefined) {
+    return `${fileIdBase(file)}#${name}`;
+  }
   if (typeof explicit !== "string" || explicit.trim() === "") {
     throw new RegistrationError(`Rule "${name}" in ${file}: id must be a non-empty string.`);
   }

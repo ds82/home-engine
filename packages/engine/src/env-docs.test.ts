@@ -11,7 +11,9 @@ function variablesReadByConfig(): string[] {
   const read = new Set<string>();
   const env = new Proxy({} as Env, {
     get(_target, name) {
-      if (typeof name === "string") read.add(name);
+      if (typeof name === "string") {
+        read.add(name);
+      }
       return undefined;
     },
   });

@@ -113,7 +113,9 @@ describe("triggered rules", () => {
     const { fake, start, entries } = env();
     const g = gate();
     await start(triggered(g.body, { max: 2 }));
-    for (let i = 0; i < 3; i++) fake.change("binary_sensor.motion");
+    for (let i = 0; i < 3; i++) {
+      fake.change("binary_sensor.motion");
+    }
     await tick();
     expect(g.started).toEqual([1, 2]);
     expect(entries()).toContainEqual(
@@ -156,7 +158,9 @@ describe("triggered rules", () => {
         { mode: "queued" },
       ),
     );
-    for (const v of ["a", "b", "c", "d"]) fake.change("binary_sensor.motion", v);
+    for (const v of ["a", "b", "c", "d"]) {
+      fake.change("binary_sensor.motion", v);
+    }
     await sleep(60);
     expect(order).toEqual([
       "start a",
@@ -174,7 +178,9 @@ describe("triggered rules", () => {
     const { fake, start, entries } = env();
     const g = gate();
     await start(triggered(g.body, { mode: "queued" }));
-    for (let i = 0; i < 11; i++) fake.change("binary_sensor.motion");
+    for (let i = 0; i < 11; i++) {
+      fake.change("binary_sensor.motion");
+    }
     await tick();
     expect(entries().filter((e) => e.level === "warn")).toHaveLength(1);
     expect(entries()).toContainEqual(expect.objectContaining({ level: "warn", max: 10 }));

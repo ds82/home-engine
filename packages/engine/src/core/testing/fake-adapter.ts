@@ -105,14 +105,20 @@ export class FakeAdapter implements BackendAdapter<FakeConfig> {
 
   /** Simulates a connection change and notifies status listeners when it changes. */
   setConnected(connected: boolean): void {
-    if (this.connected === connected) return;
+    if (this.connected === connected) {
+      return;
+    }
     this.connected = connected;
-    for (const cb of [...this.statusListeners]) cb(connected);
+    for (const cb of [...this.statusListeners]) {
+      cb(connected);
+    }
   }
 
   /** Simulates the backend reporting a new Site. */
   setSite(site: SiteInfo): void {
     this.currentSite = site;
-    for (const cb of [...this.siteListeners]) cb();
+    for (const cb of [...this.siteListeners]) {
+      cb();
+    }
   }
 }

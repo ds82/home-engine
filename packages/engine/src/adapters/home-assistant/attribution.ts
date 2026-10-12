@@ -47,20 +47,28 @@ export class WriteAttribution {
     try {
       const result = await write();
       const id = result?.context?.id;
-      if (id) this.remember(id, ruleId);
+      if (id) {
+        this.remember(id, ruleId);
+      }
       return result;
     } finally {
       this.inFlight--;
-      if (this.inFlight === 0) this.settledWaiters.splice(0).forEach((resolve) => resolve());
+      if (this.inFlight === 0) {
+        this.settledWaiters.splice(0).forEach((resolve) => resolve());
+      }
     }
   }
 
   /** The cause of a change, possibly after waiting for in-flight writes. */
   resolve(context: HaContext | undefined): ChangeCause | Promise<ChangeCause> {
     const engineUser = this.options.engineUserId();
-    if (!context || !engineUser || context.user_id !== engineUser) return { causedBy: "external" };
+    if (!context || !engineUser || context.user_id !== engineUser) {
+      return { causedBy: "external" };
+    }
     const known = this.lookup(context.id);
-    if (known || this.inFlight === 0) return known ?? { causedBy: "engine" };
+    if (known || this.inFlight === 0) {
+      return known ?? { causedBy: "engine" };
+    }
 
     // The event overtook its write's result: wait for in-flight writes (bounded).
     return new Promise<ChangeCause>((resolve) => {
@@ -75,14 +83,18 @@ export class WriteAttribution {
 
   private lookup(contextId: string): ChangeCause | undefined {
     const entry = this.contexts.get(contextId);
-    if (!entry || this.now() - entry.at > CONTEXT_TTL_MS) return undefined;
+    if (!entry || this.now() - entry.at > CONTEXT_TTL_MS) {
+      return undefined;
+    }
     return { causedBy: "engine", causedByRule: entry.ruleId };
   }
 
   private remember(contextId: string, ruleId: string): void {
     const now = this.now();
     for (const [id, entry] of this.contexts) {
-      if (now - entry.at > CONTEXT_TTL_MS) this.contexts.delete(id);
+      if (now - entry.at > CONTEXT_TTL_MS) {
+        this.contexts.delete(id);
+      }
     }
     this.contexts.set(contextId, { ruleId, at: now });
   }

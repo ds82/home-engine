@@ -50,7 +50,9 @@ rule("vacation switch", onChange("input_boolean.vacation"), (event) => {
 });
 
 rule("morning blinds", daily("07:00"), () => {
-  if (shared.get<boolean>("vacation")) return;
+  if (shared.get<boolean>("vacation")) {
+    return;
+  }
   // open the blinds
 });
 ```

@@ -32,7 +32,9 @@ function scheduling(startIso: string, location: Location | undefined, timeZone =
   });
   const moveTo = (next: Location): void => {
     loc = next;
-    for (const l of listeners) l();
+    for (const l of listeners) {
+      l();
+    }
   };
   return { clock, s, capture, moveTo };
 }

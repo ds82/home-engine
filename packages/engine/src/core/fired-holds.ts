@@ -28,10 +28,14 @@ export class FiredHolds {
   constructor(private readonly file?: string) {}
 
   async load(): Promise<void> {
-    if (!this.file || !existsSync(this.file)) return;
+    if (!this.file || !existsSync(this.file)) {
+      return;
+    }
     try {
       const data = JSON.parse(await readFile(this.file, "utf8")) as { holds?: FiredHold[] };
-      for (const hold of data.holds ?? []) this.entries.set(keyOf(hold), hold);
+      for (const hold of data.holds ?? []) {
+        this.entries.set(keyOf(hold), hold);
+      }
     } catch {
       // A corrupt record only means a few holds may fire once more; start empty.
     }
@@ -50,7 +54,9 @@ export class FiredHolds {
 
   /** The entity changed: its fired hold no longer applies. */
   forget(ruleId: string, identity: string, entityId: string): void {
-    if (this.entries.delete(keyOf({ ruleId, identity, entityId }))) this.save();
+    if (this.entries.delete(keyOf({ ruleId, identity, entityId }))) {
+      this.save();
+    }
   }
 
   /** Drops entries of rules that no longer exist (after a full load). */
@@ -62,7 +68,9 @@ export class FiredHolds {
         changed = true;
       }
     }
-    if (changed) this.save();
+    if (changed) {
+      this.save();
+    }
   }
 
   all(): FiredHold[] {
@@ -76,7 +84,9 @@ export class FiredHolds {
 
   private save(): void {
     const file = this.file;
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const snapshot = JSON.stringify({ version: 1, holds: this.all() }, null, 2);
     this.saving = this.saving.then(async () => {
       await mkdir(dirname(file), { recursive: true });

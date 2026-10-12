@@ -29,7 +29,9 @@ function ownerScope(): RuleScope | undefined {
 
 function track(handle: Handle, clear: (h: Handle) => void): void {
   const scope = ownerScope();
-  if (!scope) return;
+  if (!scope) {
+    return;
+  }
   const uncount = (scope as { trackTimer?: () => () => void }).trackTimer?.();
   const remove = scope.onDispose(() => {
     uncount?.();

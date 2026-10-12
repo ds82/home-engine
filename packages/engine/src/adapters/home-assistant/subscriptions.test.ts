@@ -169,7 +169,9 @@ describe("SubscriptionRegistry", () => {
 
     await reconnect();
     const [first, second] = ha.triggerSubscriptions();
-    if (!first || !second) throw new Error("expected two trigger subscriptions after replay");
+    if (!first || !second) {
+      throw new Error("expected two trigger subscriptions after replay");
+    }
     ha.fireTrigger(first, { platform: "numeric_state", entity_id: "sensor.humidity" });
     await flush();
     expect(fired).toEqual([

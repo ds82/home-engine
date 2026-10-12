@@ -76,7 +76,9 @@ export function engineVersion(): string {
     const file = join(dir, "package.json");
     if (existsSync(file)) {
       const pkg = JSON.parse(readFileSync(file, "utf8")) as { name?: string; version?: string };
-      if (pkg.name === "home-engine") return pkg.version ?? "0.0.0";
+      if (pkg.name === "home-engine") {
+        return pkg.version ?? "0.0.0";
+      }
     }
     dir = join(dir, "..");
   }
@@ -105,7 +107,9 @@ export function checkDataDir(dataDir: string): void {
 
 /** String values of secret-looking keys, so the logger can scrub them from every line. */
 function secretsOf(config: unknown): string[] {
-  if (typeof config !== "object" || config === null) return [];
+  if (typeof config !== "object" || config === null) {
+    return [];
+  }
   return Object.entries(config).flatMap(([key, value]) =>
     typeof value === "string" && /token|password|secret/i.test(key) ? [value] : [],
   );

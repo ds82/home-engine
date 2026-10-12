@@ -28,11 +28,15 @@ function enospc(): NodeJS.ErrnoException {
 function failingNative(when: "setup" | "later", requests: ChokidarOptions[]) {
   return (path: string, options: ChokidarOptions): Watcher => {
     requests.push(options);
-    if (options.usePolling) return watch(path, options);
+    if (options.usePolling) {
+      return watch(path, options);
+    }
     const fake = new EventEmitter() as Watcher;
     fake.close = async () => {};
     setImmediate(() => {
-      if (when === "later") fake.emit("ready");
+      if (when === "later") {
+        fake.emit("ready");
+      }
       fake.emit("error", enospc());
     });
     return fake;

@@ -41,7 +41,9 @@ describe("setState and virtual entities", () => {
   });
 
   afterEach(async () => {
-    for (const scope of scopes.splice(0)) await scope.dispose();
+    for (const scope of scopes.splice(0)) {
+      await scope.dispose();
+    }
     await client.stop();
     await ha.stop();
   });
@@ -75,7 +77,9 @@ describe("setState and virtual entities", () => {
       });
     });
     await ha.stop();
-    for (const s of ha.getStates()) ha.removeState(s.entity_id, { silent: true });
+    for (const s of ha.getStates()) {
+      ha.removeState(s.entity_id, { silent: true });
+    }
     await ha.start();
     await delay.elapseNext();
     await ready;

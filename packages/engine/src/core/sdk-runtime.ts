@@ -31,8 +31,11 @@ export function ruleLog(engineLog: Logger): Record<(typeof LOG_LEVELS)[number], 
       (message: unknown, fields?: Record<string, unknown>) => {
         const text = message instanceof Error ? message.message : String(message);
         const extra = message instanceof Error ? { err: message, ...fields } : fields;
-        if (extra) target()[level](extra, text);
-        else target()[level](text);
+        if (extra) {
+          target()[level](extra, text);
+        } else {
+          target()[level](text);
+        }
       },
     ]),
   ) as Record<(typeof LOG_LEVELS)[number], unknown>;

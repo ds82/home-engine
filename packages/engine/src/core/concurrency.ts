@@ -31,7 +31,9 @@ export class ConcurrencyController {
   submit(start: StartRun): void {
     switch (this.mode) {
       case "parallel":
-        if (this.active.size >= this.max) return this.drop("parallel");
+        if (this.active.size >= this.max) {
+          return this.drop("parallel");
+        }
         return this.launch(start);
       case "single":
         if (this.active.size > 0) {
@@ -40,12 +42,18 @@ export class ConcurrencyController {
         }
         return this.launch(start);
       case "queued":
-        if (this.pending >= this.max) return this.drop("queued");
-        if (this.active.size === 0) return this.launch(start);
+        if (this.pending >= this.max) {
+          return this.drop("queued");
+        }
+        if (this.active.size === 0) {
+          return this.launch(start);
+        }
         this.waiting.push(start);
         return;
       case "restart":
-        for (const run of this.active) run.abort();
+        for (const run of this.active) {
+          run.abort();
+        }
         return this.launch(start);
     }
   }
@@ -53,7 +61,9 @@ export class ConcurrencyController {
   /** Aborts every run and forgets queued ones (used on unload). */
   cancelAll(): void {
     this.waiting.length = 0;
-    for (const run of this.active) run.abort();
+    for (const run of this.active) {
+      run.abort();
+    }
   }
 
   private launch(start: StartRun): void {
@@ -62,7 +72,9 @@ export class ConcurrencyController {
     void run.done.then(() => {
       this.active.delete(run);
       const next = this.waiting.shift();
-      if (next) this.launch(next);
+      if (next) {
+        this.launch(next);
+      }
     });
   }
 

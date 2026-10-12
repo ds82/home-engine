@@ -68,7 +68,9 @@ export class HaSession {
     this.timeoutMs = options.timeoutMs ?? 30_000;
     ws.addEventListener("message", (ev) => this.onMessage(ev));
     ws.addEventListener("close", () => this.handleClose());
-    if (ws.readyState !== WebSocket.OPEN) this.handleClose();
+    if (ws.readyState !== WebSocket.OPEN) {
+      this.handleClose();
+    }
   }
 
   get isOpen(): boolean {
@@ -106,15 +108,22 @@ export class HaSession {
 
   /** Stops routing events of a subscription and tells Home Assistant to end it. */
   async unsubscribe(subscriptionId: number): Promise<void> {
-    if (!this.eventHandlers.delete(subscriptionId)) return;
-    if (!this.open) return;
+    if (!this.eventHandlers.delete(subscriptionId)) {
+      return;
+    }
+    if (!this.open) {
+      return;
+    }
     await this.command({ type: "unsubscribe_events", subscription: subscriptionId });
   }
 
   /** Calls `listener` once when the session closes (immediately if it already has). */
   onClose(listener: () => void): void {
-    if (this.open) this.closeListeners.add(listener);
-    else listener();
+    if (this.open) {
+      this.closeListeners.add(listener);
+    } else {
+      listener();
+    }
   }
 
   /** Closes the socket; pending requests are rejected. */
@@ -124,7 +133,9 @@ export class HaSession {
   }
 
   private handleClose(): void {
-    if (!this.open) return;
+    if (!this.open) {
+      return;
+    }
     this.open = false;
     for (const [, p] of this.pending) {
       clearTimeout(p.timer);
@@ -132,7 +143,9 @@ export class HaSession {
     }
     this.pending.clear();
     this.eventHandlers.clear();
-    for (const listener of [...this.closeListeners]) listener();
+    for (const listener of [...this.closeListeners]) {
+      listener();
+    }
     this.closeListeners.clear();
   }
 
@@ -182,17 +195,25 @@ export class HaSession {
   private dispatch(msg: Record<string, unknown>): void {
     this.log.trace({ received: msg }, "← Home Assistant");
     const id = msg.id;
-    if (typeof id !== "number") return;
-
-    if (msg.type === "event") {
-      const handler = this.eventHandlers.get(id);
-      if (handler) handler(msg.event);
+    if (typeof id !== "number") {
       return;
     }
 
-    if (msg.type !== "result" && msg.type !== "pong") return;
+    if (msg.type === "event") {
+      const handler = this.eventHandlers.get(id);
+      if (handler) {
+        handler(msg.event);
+      }
+      return;
+    }
+
+    if (msg.type !== "result" && msg.type !== "pong") {
+      return;
+    }
     const p = this.pending.get(id);
-    if (!p) return; // Late answer after a timeout, or not ours.
+    if (!p) {
+      return;
+    } // Late answer after a timeout, or not ours.
     this.pending.delete(id);
     clearTimeout(p.timer);
     if (msg.type === "pong" || msg.success === true) {

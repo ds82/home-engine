@@ -58,16 +58,22 @@ export class StateDispatcher {
         e.listeners.add(listener);
         removers.push(() => {
           e.listeners.delete(listener);
-          if (e.listeners.size === 0) this.globs.delete(selector);
+          if (e.listeners.size === 0) {
+            this.globs.delete(selector);
+          }
         });
       } else {
         let set = this.exact.get(selector);
-        if (!set) this.exact.set(selector, (set = new Set()));
+        if (!set) {
+          this.exact.set(selector, (set = new Set()));
+        }
         const s = set;
         s.add(listener);
         removers.push(() => {
           s.delete(listener);
-          if (s.size === 0) this.exact.delete(selector);
+          if (s.size === 0) {
+            this.exact.delete(selector);
+          }
         });
       }
     }
@@ -100,7 +106,9 @@ export class StateDispatcher {
     void cause.then((resolved) => {
       this.queues.delete(change.entityId);
       this.dispatch({ ...change, cause: resolved });
-      for (const next of waiting) this.receive(next);
+      for (const next of waiting) {
+        this.receive(next);
+      }
     });
   }
 
@@ -108,9 +116,15 @@ export class StateDispatcher {
     // A listener watching an entity through several selectors still runs once.
     const listeners = new Set<Listener>(this.exact.get(change.entityId));
     for (const { regex, listeners: ls } of this.globs.values()) {
-      if (regex.test(change.entityId)) for (const l of ls) listeners.add(l);
+      if (regex.test(change.entityId)) {
+        for (const l of ls) {
+          listeners.add(l);
+        }
+      }
     }
-    for (const listener of listeners) listener(change);
+    for (const listener of listeners) {
+      listener(change);
+    }
   }
 }
 
@@ -144,7 +158,9 @@ export interface StateSourceOptions {
 /** Creates the trigger source for `state` triggers. */
 export function stateTriggerSource(options: StateSourceOptions): TriggerSource {
   return (trigger, context) => {
-    if (trigger.kind !== "state") throw new Error(`state source cannot arm ${trigger.kind}`);
+    if (trigger.kind !== "state") {
+      throw new Error(`state source cannot arm ${trigger.kind}`);
+    }
     return new ArmedStateTrigger(trigger, context, options).arm();
   };
 }
@@ -204,13 +220,17 @@ class ArmedStateTrigger {
     ) {
       this.restore();
     }
-    if (this.trigger.immediate) this.evaluateImmediately();
+    if (this.trigger.immediate) {
+      this.evaluateImmediately();
+    }
     return {
       dispose: () => {
         this.disposed = true;
         watching.dispose();
         offReady?.();
-        for (const hold of this.holds.values()) hold.cancel();
+        for (const hold of this.holds.values()) {
+          hold.cancel();
+        }
         this.holds.clear();
       },
     };
@@ -218,7 +238,9 @@ class ArmedStateTrigger {
 
   private onChange(change: StateChange): void {
     const verdict = this.matcher.evaluate(change);
-    if (verdict.kind === "ignore") return;
+    if (verdict.kind === "ignore") {
+      return;
+    }
     const cause = change.resynced
       ? { causedBy: "external" as const }
       : (change.cause ?? (this.options.causeOf ?? externalCause)(change));
@@ -235,7 +257,9 @@ class ArmedStateTrigger {
     this.holds.get(key)?.cancel();
     this.holds.delete(key);
     this.options.firedHolds?.forget(this.context.scope.ruleId, this.context.identity, key);
-    if (verdict.kind !== "match" || !change.newState) return;
+    if (verdict.kind !== "match" || !change.newState) {
+      return;
+    }
 
     const stamp = this.stampOf(change.newState);
     // Resynced changes happened while disconnected: count from the state's own timestamp.
@@ -263,7 +287,9 @@ class ArmedStateTrigger {
   }
 
   private expire(key: string, hold: Hold): void {
-    if (this.disposed || this.holds.get(key) !== hold) return;
+    if (this.disposed || this.holds.get(key) !== hold) {
+      return;
+    }
     if (this.options.connection && !this.options.connection.isReady()) {
       hold.deferred = true;
       return;
@@ -274,7 +300,9 @@ class ArmedStateTrigger {
   /** After a reconnect: fire deferred holds whose entity is unchanged and still matches. */
   private recheckDeferred(): void {
     for (const [key, hold] of [...this.holds]) {
-      if (!hold.deferred) continue;
+      if (!hold.deferred) {
+        continue;
+      }
       const current = this.options.cache.get(hold.entityId);
       if (current && this.stampOf(current) === hold.stamp && this.matcher.matchesCurrent(current)) {
         this.complete(key, hold);
@@ -302,7 +330,9 @@ class ArmedStateTrigger {
       ? candidates.sort((a, b) => this.stampOf(b).localeCompare(this.stampOf(a))).slice(0, 1)
       : candidates;
     for (const state of decide) {
-      if (!this.matcher.matchesCurrent(state)) continue;
+      if (!this.matcher.matchesCurrent(state)) {
+        continue;
+      }
       const key = this.group ? "*" : state.entity_id;
       const stamp = this.stampOf(state);
       const fired = this.options.firedHolds?.has({
@@ -311,7 +341,9 @@ class ArmedStateTrigger {
         entityId: key,
         since: this.recordStamp(state.entity_id, stamp),
       });
-      if (fired) continue;
+      if (fired) {
+        continue;
+      }
       this.startHold(key, {
         entityId: state.entity_id,
         stamp,
@@ -328,7 +360,9 @@ class ArmedStateTrigger {
   /** `immediate`: fire once for every watched entity whose current value matches. */
   private evaluateImmediately(): void {
     for (const state of this.options.cache.all()) {
-      if (!this.watches(state.entity_id) || !this.matcher.matchesCurrent(state)) continue;
+      if (!this.watches(state.entity_id) || !this.matcher.matchesCurrent(state)) {
+        continue;
+      }
       this.emit(
         state.entity_id,
         state,
@@ -348,7 +382,9 @@ class ArmedStateTrigger {
     resynced: boolean,
     restored: boolean,
   ): void {
-    if (this.disposed) return;
+    if (this.disposed) {
+      return;
+    }
     const event: EventPayload = {
       type: "state",
       entityId,
@@ -402,7 +438,9 @@ export class StateMatcher {
   ) {
     if (trigger.ignoreUnavailable) {
       for (const state of cache.all()) {
-        if (!UNAVAILABLE.has(state.state)) this.lastReal.set(state.entity_id, state);
+        if (!UNAVAILABLE.has(state.state)) {
+          this.lastReal.set(state.entity_id, state);
+        }
       }
     }
   }
@@ -419,19 +457,28 @@ export class StateMatcher {
     if (trigger.ignoreUnavailable) {
       const entity = change.entityId;
       if (to && UNAVAILABLE.has(to.state)) {
-        if (from && !UNAVAILABLE.has(from.state)) this.lastReal.set(entity, from);
+        if (from && !UNAVAILABLE.has(from.state)) {
+          this.lastReal.set(entity, from);
+        }
         return { kind: "ignore" };
       }
-      if (from && UNAVAILABLE.has(from.state)) from = this.lastReal.get(entity) ?? from;
-      if (to) this.lastReal.set(entity, to);
-      else this.lastReal.delete(entity);
+      if (from && UNAVAILABLE.has(from.state)) {
+        from = this.lastReal.get(entity) ?? from;
+      }
+      if (to) {
+        this.lastReal.set(entity, to);
+      } else {
+        this.lastReal.delete(entity);
+      }
     }
 
     const changed =
       trigger.attribute === "*"
         ? from?.state !== to?.state || !deepEqual(from?.attributes, to?.attributes)
         : from?.state !== to?.state;
-    if (!changed) return { kind: "ignore" };
+    if (!changed) {
+      return { kind: "ignore" };
+    }
     if (!matchesFilter(trigger.from, from?.state) || !matchesFilter(trigger.to, to?.state)) {
       return { kind: "nomatch" };
     }
@@ -440,7 +487,9 @@ export class StateMatcher {
 
   /** Whether an entity's current state matches the `to` filter (for restoration/immediate). */
   matchesCurrent(state: HaState): boolean {
-    if (this.trigger.ignoreUnavailable && UNAVAILABLE.has(state.state)) return false;
+    if (this.trigger.ignoreUnavailable && UNAVAILABLE.has(state.state)) {
+      return false;
+    }
     return matchesFilter(this.trigger.to, this.valueOf(state));
   }
 
@@ -466,7 +515,9 @@ export class StateMatcher {
   private evaluateAttribute(change: StateChange, attribute: string): Verdict {
     const oldValue = change.oldState?.attributes[attribute];
     const newValue = change.newState?.attributes[attribute];
-    if (deepEqual(oldValue, newValue)) return { kind: "ignore" };
+    if (deepEqual(oldValue, newValue)) {
+      return { kind: "ignore" };
+    }
     if (!matchesFilter(this.trigger.from, oldValue) || !matchesFilter(this.trigger.to, newValue)) {
       return { kind: "nomatch" };
     }
@@ -479,9 +530,15 @@ export class StateMatcher {
  * missing) never match a filter, and predicates are not called with them.
  */
 export function matchesFilter(filter: ValueFilter | undefined, value: unknown): boolean {
-  if (filter === undefined) return true;
-  if (value === undefined) return false;
-  if (typeof filter === "function") return (filter as (v: unknown) => boolean)(value);
+  if (filter === undefined) {
+    return true;
+  }
+  if (value === undefined) {
+    return false;
+  }
+  if (typeof filter === "function") {
+    return (filter as (v: unknown) => boolean)(value);
+  }
   const allowed = Array.isArray(filter) ? (filter as unknown[]) : [filter];
   return allowed.some((f) => f === value || String(f) === String(value));
 }

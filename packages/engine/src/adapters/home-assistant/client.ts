@@ -104,10 +104,11 @@ export class HaClient {
     }
     this.subscriptions.onEvent("core_config_updated", () => {
       const session = this.connection.current;
-      if (session)
+      if (session) {
         void this.loadConfig(session).catch((err: unknown) =>
           this.log.warn({ err }, "Reloading the Home Assistant config failed"),
         );
+      }
     });
   }
 
@@ -195,11 +196,15 @@ export class HaClient {
       this.log.warn({ err }, "Initialising the Home Assistant session failed");
       return;
     }
-    if (!session.isOpen) return;
+    if (!session.isOpen) {
+      return;
+    }
     this.setReady(true);
     this.firstReady?.resolve();
     this.firstReady = undefined;
-    for (const listener of [...this.readyListeners]) listener();
+    for (const listener of [...this.readyListeners]) {
+      listener();
+    }
   }
 
   /**
@@ -257,13 +262,17 @@ export class HaClient {
     this.currentSite = site;
     if (changed) {
       this.log.info({ site }, "Home Assistant location settings changed");
-      for (const listener of [...this.siteListeners]) listener();
+      for (const listener of [...this.siteListeners]) {
+        listener();
+      }
     }
   }
 
   /** Notifies status listeners on every transition, never twice for the same state. */
   private setReady(ready: boolean): void {
-    if (this.ready === ready) return;
+    if (this.ready === ready) {
+      return;
+    }
     this.ready = ready;
     for (const listener of [...this.statusListeners]) {
       try {

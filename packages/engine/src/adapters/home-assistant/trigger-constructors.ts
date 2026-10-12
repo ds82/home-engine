@@ -29,7 +29,9 @@ const STATE_OPTIONS: ReadonlySet<string> = new Set([
 /** SDK `onChange(entities, options?)`. */
 export function onChange(entities: unknown, options: unknown = {}): StateTrigger {
   const list = Array.isArray(entities) ? [...(entities as unknown[])] : [entities];
-  if (list.length === 0) throw new TypeError("onChange(): at least one entity is required");
+  if (list.length === 0) {
+    throw new TypeError("onChange(): at least one entity is required");
+  }
   for (const entity of list) {
     if (typeof entity !== "string" || !ENTITY_SELECTOR.test(entity)) {
       throw new TypeError(
@@ -38,7 +40,9 @@ export function onChange(entities: unknown, options: unknown = {}): StateTrigger
     }
   }
 
-  if (!isPlainObject(options)) throw new TypeError("onChange(): options must be an object");
+  if (!isPlainObject(options)) {
+    throw new TypeError("onChange(): options must be an object");
+  }
   for (const key of Object.keys(options)) {
     if (!STATE_OPTIONS.has(key)) {
       throw new TypeError(
@@ -47,18 +51,25 @@ export function onChange(entities: unknown, options: unknown = {}): StateTrigger
     }
   }
   const o = options as StateTriggerOptions;
-  if (o.from !== undefined) checkFilter("from", o.from);
-  if (o.to !== undefined) checkFilter("to", o.to);
+  if (o.from !== undefined) {
+    checkFilter("from", o.from);
+  }
+  if (o.to !== undefined) {
+    checkFilter("to", o.to);
+  }
   if (o.attribute !== undefined && (typeof o.attribute !== "string" || o.attribute === "")) {
     throw new TypeError("onChange(): attribute must be a non-empty string");
   }
-  if (o.for !== undefined) parseDuration(o.for, "onChange() for");
+  if (o.for !== undefined) {
+    parseDuration(o.for, "onChange() for");
+  }
   if (o.holdAs !== undefined) {
     if (o.holdAs !== "entity" && o.holdAs !== "group") {
       throw new TypeError('onChange(): holdAs must be "entity" or "group"');
     }
-    if (o.for === undefined)
+    if (o.for === undefined) {
       throw new TypeError("onChange(): holdAs only applies together with for");
+    }
   }
   for (const flag of ["immediate", "ignoreUnavailable"] as const) {
     if (o[flag] !== undefined && typeof o[flag] !== "boolean") {
@@ -90,14 +101,17 @@ export function onEvent(eventType: unknown, dataFilter?: unknown): EventTrigger 
     kind: "event",
     eventType,
   };
-  if (dataFilter !== undefined) descriptor.dataFilter = copyPlain(dataFilter as EventDataFilter);
+  if (dataFilter !== undefined) {
+    descriptor.dataFilter = copyPlain(dataFilter as EventDataFilter);
+  }
   return deepFreeze(descriptor);
 }
 
 /** SDK `onTrigger(config)`: a native Home Assistant trigger configuration. */
 export function onTrigger(config: unknown): HaTrigger {
-  if (!isPlainObject(config))
+  if (!isPlainObject(config)) {
     throw new TypeError("onTrigger(): the trigger configuration must be an object");
+  }
   const platform = (config as HaTriggerConfig).platform ?? (config as HaTriggerConfig).trigger;
   if (typeof platform !== "string" || platform === "") {
     throw new TypeError(
@@ -113,8 +127,12 @@ export function onTrigger(config: unknown): HaTrigger {
 function checkFilter(name: string, filter: unknown): void {
   const ok = (v: unknown): boolean =>
     typeof v === "string" || typeof v === "number" || typeof v === "boolean";
-  if (typeof filter === "function" || ok(filter)) return;
-  if (Array.isArray(filter) && filter.length > 0 && filter.every(ok)) return;
+  if (typeof filter === "function" || ok(filter)) {
+    return;
+  }
+  if (Array.isArray(filter) && filter.length > 0 && filter.every(ok)) {
+    return;
+  }
   throw new TypeError(
     `onChange(): ${name} must be a value, a non-empty array of values or a function`,
   );
@@ -135,7 +153,9 @@ function copyArrays<T extends object>(options: T): T {
 
 /** Copies plain objects and arrays (keeping functions) so the descriptor owns its data. */
 function copyPlain<T>(value: T): T {
-  if (Array.isArray(value)) return value.map(copyPlain) as T;
+  if (Array.isArray(value)) {
+    return value.map(copyPlain) as T;
+  }
   if (isPlainObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, copyPlain(v)])) as T;
   }

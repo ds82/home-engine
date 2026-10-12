@@ -43,15 +43,23 @@ export function createStateHelpers(cache: StateCache): StateHelpers {
     },
     members: (group) => {
       const ids = cache.get(group)?.attributes.entity_id;
-      if (Array.isArray(ids)) return ids.filter((id): id is string => typeof id === "string");
+      if (Array.isArray(ids)) {
+        return ids.filter((id): id is string => typeof id === "string");
+      }
       return typeof ids === "string" ? [ids] : [];
     },
     getNumber: (entity, attribute) => {
       const state = cache.get(entity);
-      if (!state) return undefined;
+      if (!state) {
+        return undefined;
+      }
       const raw: unknown = attribute === undefined ? state.state : state.attributes[attribute];
-      if (typeof raw === "number") return Number.isFinite(raw) ? raw : undefined;
-      if (typeof raw !== "string" || raw.trim() === "" || UNAVAILABLE.has(raw)) return undefined;
+      if (typeof raw === "number") {
+        return Number.isFinite(raw) ? raw : undefined;
+      }
+      if (typeof raw !== "string" || raw.trim() === "" || UNAVAILABLE.has(raw)) {
+        return undefined;
+      }
       const value = Number(raw);
       return Number.isFinite(value) ? value : undefined;
     },
