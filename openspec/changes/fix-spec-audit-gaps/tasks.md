@@ -47,7 +47,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 - [x] 6.1 Wrap the switching helpers (`on`, `off`, `forceOn`, `forceOff`, `toggle`, `up`, `down`) in `trackWrite` with the service and entity as description (design decision 6). Verify a safety-net test that an unawaited `forceOn("light.missing")` rejected by the mock logs `Write failed (not awaited): light.turn_on → light.missing: …` once, attributed to the rule.
 - [x] 6.2 Add the read-only allowlist for `ws.command` in dry-run mode (design decision 11). Verify dry-run tests: `config/entity_registry/list` reaches the mock, and `config/entity_registry/update` does not, logs `[dry-run]` with the rule ID and resolves `undefined`.
-- [ ] 6.3 Document the dry-run behaviour of `ws.command` in `docs/rules/actions.md`. Verify the docs check passes.
+- [x] 6.3 Document the dry-run behaviour of `ws.command` in `docs/rules/actions.md`. Verify the docs check passes.
 
 ## 7. History (ha-history)
 

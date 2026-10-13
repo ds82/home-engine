@@ -195,5 +195,10 @@ INFO: [dry-run] lights#porch light.turn_on
 
 The write resolves as if it had succeeded (a call asking for response data receives `{}`).
 Reads, history, triggers and the `on`/`off` skip work as usual, so you can run new rules against
-your real home without them touching anything. Raw `ws.command()` messages are sent in dry-run
-too, because they are mostly reads; avoid sending writes through them while testing.
+your real home without them touching anything.
+
+Raw `ws.command()` messages are sent in dry-run only when the engine knows them to be reads:
+`get_states`, `get_config`, `get_services`, `get_panels`, `auth/current_user`, any
+`config/…/list` or `config/…/get`, `history/history_during_period`, the `recorder/` statistics
+queries and `search/related`. Any other command is logged as `[dry-run] <rule> ws <type>` with
+its payload and resolves with `undefined`.
