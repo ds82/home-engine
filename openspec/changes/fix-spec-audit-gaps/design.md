@@ -25,7 +25,7 @@ The design of `add-rule-engine` (archived in `openspec/changes/archive/2026-10-1
 
 The timer callback now:
 - takes `now = clock.now()`;
-- fires only if `now - at < LATE_LIMIT_MS` (60 s);
+- fires only if `now - at <= LATE_LIMIT_MS` (60 s), so a run exactly one minute late still runs, as the spec says only a run *more* than a minute late is missed;
 - otherwise logs `Skipped <trigger> run planned for <at>: <n> late` at `debug` through the rule's logger;
 - in both cases re-arms with `arm(now)` or `armNext(now)`.
 

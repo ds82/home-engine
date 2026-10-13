@@ -1,56 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ARM_MS, hostClock, scheduleAt, type TimerHost } from "./timer.js";
-
-/**
- * A host whose wall clock and timer queue move independently: `elapse` lets time pass
- * normally, `jump` changes only the wall clock (NTP correction, suspend).
- */
-class FakeHost implements TimerHost {
-  wall = Date.parse("2026-10-11T06:00:00.000Z");
-  private mono = 0;
-  private readonly timers = new Map<number, { at: number; fn: () => void }>();
-  private nextId = 1;
-  readonly armed: number[] = [];
-
-  now(): number {
-    return this.wall;
-  }
-
-  setTimeout(fn: () => void, ms: number): unknown {
-    this.armed.push(ms);
-    const id = this.nextId++;
-    this.timers.set(id, { at: this.mono + ms, fn });
-    return id;
-  }
-
-  clearTimeout(handle: unknown): void {
-    this.timers.delete(handle as number);
-  }
-
-  /** Lets `ms` pass on both clocks, running due timers in order. */
-  elapse(ms: number): void {
-    const end = this.mono + ms;
-    for (;;) {
-      const due = [...this.timers.entries()]
-        .filter(([, t]) => t.at <= end)
-        .sort((a, b) => a[1].at - b[1].at)[0];
-      if (!due) {
-        break;
-      }
-      this.timers.delete(due[0]);
-      this.wall += due[1].at - this.mono;
-      this.mono = due[1].at;
-      due[1].fn();
-    }
-    this.wall += end - this.mono;
-    this.mono = end;
-  }
-
-  /** Changes only the wall clock. */
-  jump(ms: number): void {
-    this.wall += ms;
-  }
-}
+import { FakeHost } from "./testing/fake-host.js";
+import { MAX_ARM_MS, hostClock, scheduleAt } from "./timer.js";
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
