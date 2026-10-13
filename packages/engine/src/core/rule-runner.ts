@@ -56,6 +56,8 @@ interface SetupHost {
   startupListeners: Array<() => void>;
   /** Number of listen() calls during setup, for listener identities. */
   listenCount: number;
+  /** Explicit IDs of the rule's listeners that are not cancelled; each must be unique. */
+  listenerIds: Set<string>;
 }
 
 const setupHosts = new WeakMap<RuleScopeImpl, SetupHost>();
@@ -117,6 +119,7 @@ async function startSetupRule(
     inSetup: true,
     startupListeners: [],
     listenCount: 0,
+    listenerIds: new Set(),
   };
   setupHosts.set(scope, host);
   options.onStarting?.(scope);
@@ -184,6 +187,12 @@ export function listen(
     throw new Error("onStartup() can only be used during setup.");
   }
 
+  if (options.id !== undefined && host.listenerIds.has(options.id)) {
+    throw new Error(
+      `listen(): the id "${options.id}" is already used by another listener of this rule; listener ids must be unique within a rule.`,
+    );
+  }
+
   const fire = (trigger: Trigger, payload: EventPayload): void => {
     if (scope.disposed || cancelled) {
       return;
@@ -204,6 +213,9 @@ export function listen(
     collect: disarm,
     armed: armedOfListener,
   });
+  if (options.id !== undefined) {
+    host.listenerIds.add(options.id);
+  }
   for (const trigger of startups) {
     host.startupListeners.push(() => fire(trigger, { type: "startup" }));
   }
@@ -214,6 +226,9 @@ export function listen(
         return;
       }
       cancelled = true;
+      if (options.id !== undefined) {
+        host.listenerIds.delete(options.id);
+      }
       for (const d of disarm.splice(0)) {
         d.dispose();
       }

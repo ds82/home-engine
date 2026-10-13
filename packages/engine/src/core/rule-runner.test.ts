@@ -344,6 +344,41 @@ describe("setup rules", () => {
     expect(calls).toEqual(["b"]);
   });
 
+  it("throws for a listener id already used in the same rule; the first listener still fires", async () => {
+    const { fake, start } = env();
+    const calls: string[] = [];
+    let error: unknown;
+    await start(
+      setupRule(() => {
+        listen(motion, () => void calls.push("first"), { id: "hall" });
+        try {
+          listen(door, () => void calls.push("second"), { id: "hall" });
+        } catch (err) {
+          error = err;
+        }
+      }),
+    );
+    expect((error as Error).message).toMatch(/the id "hall" is already used/);
+    fake.change("binary_sensor.motion");
+    fake.change("binary_sensor.door");
+    await tick();
+    expect(calls).toEqual(["first"]);
+  });
+
+  it("lets a new listener reuse the id of a cancelled one", async () => {
+    const { fake, start } = env();
+    const calls: string[] = [];
+    await start(
+      setupRule(() => {
+        listen(motion, () => void calls.push("old"), { id: "hall" }).cancel();
+        listen(motion, () => void calls.push("new"), { id: "hall" });
+      }),
+    );
+    fake.change("binary_sensor.motion");
+    await tick();
+    expect(calls).toEqual(["new"]);
+  });
+
   it("allows listen() from listener callbacks of the same setup rule", async () => {
     const { fake, start } = env();
     const calls: string[] = [];

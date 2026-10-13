@@ -35,7 +35,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 5. Listeners (rule-triggers)
 
-- [ ] 5.1 Make `listen()` throw for an `id` already used in the same rule, naming the ID (`core/rule-runner.ts`). Verify a test where the second call throws and the first listener still fires.
+- [x] 5.1 Make `listen()` throw for an `id` already used in the same rule, naming the ID (`core/rule-runner.ts`). Verify a test where the second call throws and the first listener still fires.
 - [ ] 5.2 Add the missing trigger tests:
   - one trigger object used as a triggered rule's trigger and with `listen()`, where both fire;
   - after a hold has fired, `store.keys()` does not contain the fired-holds record.
