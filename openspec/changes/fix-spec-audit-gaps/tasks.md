@@ -87,7 +87,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 ## 10. Container checks (container-image)
 
 - [x] 10.1 Make the Compose example's image configurable (`${HOME_ENGINE_IMAGE:-…}`) and add `stop_grace_period: 15s`. Verify `docker compose -f examples/docker-compose.yml config` shows both.
-- [ ] 10.2 Extend `scripts/container-smoke.sh` (design decision 13) with:
+- [x] 10.2 Extend `scripts/container-smoke.sh` (design decision 13) with:
   - the unhealthy health-check case;
   - the zombie check;
   - the quick start through `docker compose` against the mock Home Assistant.
@@ -97,5 +97,5 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 11. Integration
 
-- [ ] 11.1 Run lint, format check, build, typecheck, the full test suite, the docs check, `scripts/container-smoke.sh` and `scripts/e2e-ha.sh`. Verify all pass and the `check`, `container` and `e2e` CI jobs are green for the final commit.
+- [x] 11.1 Run lint, format check, build, typecheck, the full test suite, the docs check, `scripts/container-smoke.sh` and `scripts/e2e-ha.sh`. Verify all pass and the `check`, `container` and `e2e` CI jobs are green for the final commit.
 - [x] 11.2 Re-run the spec audit for the seven modified capabilities, and confirm that every scenario in the delta specs is implemented and covered by a test.
