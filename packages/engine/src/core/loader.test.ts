@@ -108,4 +108,26 @@ describe("RuleLoader", () => {
       expect.objectContaining({ file: "x.ts", status: "loaded" }),
     ]);
   });
+
+  it("logs an evaluation timeout as a warning naming the file", async () => {
+    loader = new RuleLoader({
+      rulesDir: join(root, "rules"),
+      buildDir: join(root, "data", ".build"),
+      registry,
+      log: capture.log,
+      evaluationTimeoutMs: 20,
+    });
+    write("hanging.ts", "await new Promise(() => {});\n");
+    expect(await loader.loadFile("hanging.ts")).toBe(false);
+    const lines = capture.entries().filter((e) => e.file === "hanging.ts");
+    expect(lines).toEqual([
+      expect.objectContaining({
+        level: "warn",
+        message: "Evaluating hanging.ts did not finish within 0.02 s",
+      }),
+    ]);
+    expect(registry.listFiles()).toEqual([
+      expect.objectContaining({ file: "hanging.ts", status: "failed" }),
+    ]);
+  });
 });

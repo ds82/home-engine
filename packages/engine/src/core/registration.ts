@@ -59,6 +59,14 @@ export class FileEvaluationError extends Error {
   }
 }
 
+/** A rule file's evaluation did not settle in time; the file may still be running. */
+export class FileEvaluationTimeoutError extends FileEvaluationError {
+  constructor(file: string, timeoutMs: number) {
+    super(file, `Evaluating ${file} did not finish within ${timeoutMs / 1000} s`);
+    this.name = "FileEvaluationTimeoutError";
+  }
+}
+
 export const EVALUATION_TIMEOUT_MS = 30_000;
 
 interface FileRegistry {
@@ -125,13 +133,7 @@ export async function evaluateFile(
       fileStorage.run(registry, evaluate),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () =>
-            reject(
-              new FileEvaluationError(
-                file,
-                `Evaluating ${file} did not finish within ${timeoutMs / 1000} s`,
-              ),
-            ),
+          () => reject(new FileEvaluationTimeoutError(file, timeoutMs)),
           timeoutMs,
         );
       }),

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DependencyGraph, bundleRuleFile, importBundle } from "./bundler.js";
 import { discoverRuleFiles, reportDiscovery } from "./discovery.js";
 import type { Logger } from "./logger.js";
-import { FileEvaluationError, evaluateFile } from "./registration.js";
+import { FileEvaluationError, FileEvaluationTimeoutError, evaluateFile } from "./registration.js";
 import type { RuleRegistry } from "./rule-registry.js";
 import { RuleScopeImpl } from "./rule-scope.js";
 
@@ -91,8 +91,12 @@ export class RuleLoader {
       log.info({ file, rules: rules.length }, `Loaded ${file} (${rules.length} rule(s))`);
       return true;
     } catch (err) {
-      const cause = err instanceof FileEvaluationError ? err.cause : err;
-      log.error({ err: cause ?? err, file }, err instanceof Error ? err.message : String(err));
+      if (err instanceof FileEvaluationTimeoutError) {
+        log.warn({ file }, err.message);
+      } else {
+        const cause = err instanceof FileEvaluationError ? err.cause : err;
+        log.error({ err: cause ?? err, file }, err instanceof Error ? err.message : String(err));
+      }
       registry.fileFailed(file, err);
       return false;
     }
