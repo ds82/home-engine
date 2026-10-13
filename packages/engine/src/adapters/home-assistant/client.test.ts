@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HaClient } from "./client.js";
 import type { StateChange } from "./state-cache.js";
 import { FakeDelay } from "./testing/fake-delay.js";
-import { TOKEN, logCapture } from "../../core/testing/log-capture.js";
+import { TOKEN, logCapture, type LogCapture } from "../../core/testing/log-capture.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
 
 describe("HaClient state cache", () => {
@@ -10,8 +10,10 @@ describe("HaClient state cache", () => {
   let client: HaClient;
   let fake: FakeDelay;
   let changes: StateChange[];
+  let capture: LogCapture;
 
   beforeEach(async () => {
+    capture = logCapture();
     ha = new MockHomeAssistant({ tokens: [TOKEN] });
     await ha.start();
     fake = new FakeDelay();
@@ -23,7 +25,7 @@ describe("HaClient state cache", () => {
         token: TOKEN,
         supervisor: false,
       },
-      logCapture().log,
+      capture.log,
       { delay: fake.delay, random: () => 1 },
     );
     changes = [];
@@ -150,6 +152,13 @@ describe("HaClient state cache", () => {
       ["sensor.fresh", undefined, "5", true],
       ["sensor.old", "1", undefined, true],
     ]);
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "debug",
+        message: "Resync after reconnect: 3 entities differed",
+        differed: 3,
+      }),
+    );
   });
 
   it("replays subscriptions before loading states on reconnect", async () => {

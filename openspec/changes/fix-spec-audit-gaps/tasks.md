@@ -82,7 +82,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - after a failed `npm install`, the engine still loads rule files, and a file with an unresolvable import fails on its own with a clear error.
 
   Verify they pass.
-- [ ] 9.3 Assert the debug line `Resync after reconnect: N entities differed` in the reconnect test. Verify it passes.
+- [x] 9.3 Assert the debug line `Resync after reconnect: N entities differed` in the reconnect test. Verify it passes.
 
 ## 10. Container checks (container-image)
 
