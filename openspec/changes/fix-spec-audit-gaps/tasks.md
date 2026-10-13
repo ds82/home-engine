@@ -41,7 +41,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - after a hold has fired, `store.keys()` does not contain the fired-holds record.
 
   Verify they pass.
-- [ ] 5.3 Mention the uniqueness of listener IDs in `docs/rules/triggers.md`. Verify the docs check passes.
+- [x] 5.3 Mention the uniqueness of listener IDs in `docs/rules/triggers.md`. Verify the docs check passes.
 
 ## 6. Writes and dry-run (ha-actions)
 

@@ -265,6 +265,10 @@ setup("porch", () => {
 });
 ```
 
+A listener `id` must be unique within its rule: a second `listen()` with an id that an active
+listener of the same rule already uses throws, naming the id, and the first listener stays.
+After `handle.cancel()` the id is free again. Different rules may use the same ids.
+
 ## Waiting inside a rule: `waitFor`
 
 `waitFor(entity, filter, options)` waits until an entity matches a filter. It resolves with the
