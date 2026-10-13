@@ -116,6 +116,43 @@ describe("RuleLoader", () => {
     expect(registry.listRules().map((r) => r.id)).toEqual(["x#ok"]);
   });
 
+  it("fails a file with an uncaught duplicate rule name and logs it with the file path", async () => {
+    write(
+      "lights.ts",
+      [
+        'import { rule } from "@home-engine/sdk";',
+        'rule("motion", { kind: "startup" }, () => {});',
+        'rule("motion", { kind: "startup" }, () => {});',
+      ].join("\n"),
+    );
+    expect(await loader.loadFile("lights.ts")).toBe(false);
+    expect(registry.listRules()).toEqual([]);
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        file: "lights.ts",
+        message: expect.stringContaining('Duplicate rule name "motion" in lights.ts'),
+      }),
+    );
+  });
+
+  it("keeps the first rule when the file catches a duplicate rule name", async () => {
+    write(
+      "lights.ts",
+      [
+        'import { rule } from "@home-engine/sdk";',
+        'rule("motion", { kind: "startup" }, () => {});',
+        "try {",
+        '  rule("motion", { kind: "startup" }, () => {}, { description: "second" });',
+        "} catch {}",
+      ].join("\n"),
+    );
+    expect(await loader.loadFile("lights.ts")).toBe(true);
+    expect(registry.listRules()).toEqual([
+      expect.objectContaining({ id: "lights#motion", description: undefined }),
+    ]);
+  });
+
   it("logs an evaluation timeout as a warning naming the file", async () => {
     loader = new RuleLoader({
       rulesDir: join(root, "rules"),

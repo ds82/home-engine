@@ -229,7 +229,7 @@ function add(registry: FileRegistry, definition: RuleDefinition): void {
   }
   if (registry.names.has(name)) {
     throw new RegistrationError(
-      `Duplicate rule name "${name}" in ${registry.file}; the first rule with this name is kept.`,
+      `Duplicate rule name "${name}" in ${registry.file}; rule names must be unique within a file.`,
     );
   }
   registry.names.add(name);
