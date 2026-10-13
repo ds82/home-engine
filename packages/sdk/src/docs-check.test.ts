@@ -39,7 +39,9 @@ const good = [
   "",
 ].join("\n");
 
-describe("docs type-check script", () => {
+// Every test starts a Node process that loads TypeScript and ESLint; a cold CI runner needs
+// more than the default 5 s for the first one.
+describe("docs type-check script", { timeout: 30_000 }, () => {
   const dirs: string[] = [];
   afterEach(() => {
     for (const d of dirs.splice(0)) {

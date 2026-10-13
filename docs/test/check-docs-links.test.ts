@@ -26,7 +26,8 @@ function run(dist: string, base?: string): { code: number; output: string } {
 
 const page = (body: string): string => `<html><body>${body}</body></html>`;
 
-describe("docs anchor check", () => {
+// Every test starts a Node process.
+describe("docs anchor check", { timeout: 30_000 }, () => {
   const dirs: string[] = [];
   afterEach(() => {
     for (const d of dirs.splice(0)) {
