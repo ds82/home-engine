@@ -71,7 +71,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 9. Tests for behaviour that is already correct
 
-- [ ] 9.1 Engine-level tests:
+- [x] 9.1 Engine-level tests:
   - with several rules loaded, the mock sees exactly one connection (`connectionCount`);
   - `TIME_ZONE` overrides the zone Home Assistant reports, and without it, Home Assistant's zone reaches the scheduler.
 

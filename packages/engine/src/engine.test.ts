@@ -179,5 +179,51 @@ describe("engine startup", () => {
       // The token never reaches the log.
       expect(JSON.stringify(sink.lines())).not.toContain(TOKEN);
     });
+
+    it("shares one connection between all rules", async () => {
+      for (const room of ["hall", "kitchen", "porch"]) {
+        writeFileSync(
+          join(rulesDir, `${room}.ts`),
+          `import { onChange, rule, setup, listen } from "@home-engine/sdk";
+           rule("a", onChange("binary_sensor.porch_motion"), () => {});
+           setup("b", () => { listen(onChange("light.porch"), () => {}); });`,
+        );
+      }
+      engine = await startEngine({
+        env: env({ HA_URL: ha.url, HA_TOKEN: TOKEN }),
+        adapter: new HomeAssistantAdapter(),
+        logDestination: logSink().stream,
+        httpListenPort: 0,
+      });
+      expect(engine.registry.listRules()).toHaveLength(6);
+      expect(ha.connectionCount).toBe(1);
+    });
+
+    it("schedules in TIME_ZONE when set, else in Home Assistant's time zone", async () => {
+      ha.config.time_zone = "Asia/Tokyo";
+      writeFileSync(
+        join(rulesDir, "tz.ts"),
+        `import { daily, rule } from "@home-engine/sdk";
+         rule("morning", daily("07:00"), () => {});`,
+      );
+      const nextRun = async (extra: Record<string, string>): Promise<Date | undefined> => {
+        engine = await startEngine({
+          env: env({ HA_URL: ha.url, HA_TOKEN: TOKEN, ...extra }),
+          adapter: new HomeAssistantAdapter(),
+          logDestination: logSink().stream,
+          httpListenPort: 0,
+        });
+        const next = engine.registry.rule("tz#morning")?.nextRun;
+        await engine.stop();
+        engine = undefined;
+        return next;
+      };
+      const localTime = (at: Date | undefined, timeZone: string): string | undefined =>
+        at?.toLocaleTimeString("en-GB", { timeZone, hour: "2-digit", minute: "2-digit" });
+      expect(localTime(await nextRun({}), "Asia/Tokyo")).toBe("07:00");
+      expect(localTime(await nextRun({ TIME_ZONE: "America/New_York" }), "America/New_York")).toBe(
+        "07:00",
+      );
+    });
   });
 });
