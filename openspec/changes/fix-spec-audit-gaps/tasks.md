@@ -98,4 +98,4 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 ## 11. Integration
 
 - [ ] 11.1 Run lint, format check, build, typecheck, the full test suite, the docs check, `scripts/container-smoke.sh` and `scripts/e2e-ha.sh`. Verify all pass and the `check`, `container` and `e2e` CI jobs are green for the final commit.
-- [ ] 11.2 Re-run the spec audit for the seven modified capabilities, and confirm that every scenario in the delta specs is implemented and covered by a test.
+- [x] 11.2 Re-run the spec audit for the seven modified capabilities, and confirm that every scenario in the delta specs is implemented and covered by a test.
