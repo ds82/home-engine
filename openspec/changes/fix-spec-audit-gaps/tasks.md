@@ -86,7 +86,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 10. Container checks (container-image)
 
-- [ ] 10.1 Make the Compose example's image configurable (`${HOME_ENGINE_IMAGE:-…}`) and add `stop_grace_period: 15s`. Verify `docker compose -f examples/docker-compose.yml config` shows both.
+- [x] 10.1 Make the Compose example's image configurable (`${HOME_ENGINE_IMAGE:-…}`) and add `stop_grace_period: 15s`. Verify `docker compose -f examples/docker-compose.yml config` shows both.
 - [ ] 10.2 Extend `scripts/container-smoke.sh` (design decision 13) with:
   - the unhealthy health-check case;
   - the zombie check;
