@@ -42,7 +42,7 @@ The module-level `current` slot in `core/registration.ts` becomes an `AsyncLocal
 
 A file that keeps running after a timeout still sees its own, closed registry, so its late `rule()` calls throw instead of landing in another file. Trigger callbacks run under the rule's run context, without a file registry, so they throw as before, even while another file is loading.
 
-`currentFileScope()` reads the same store. Timers that a timed-out file creates later attach to its disposed scope. A disposed scope cancels anything registered on it immediately, which needs a small addition to `core/rule-scope.ts`.
+`currentFileScope()` reads the same store. Timers that a timed-out file creates later attach to its disposed scope. A disposed scope already runs a cleanup registered on it immediately, so such a timer is cleared before it can fire; `core/rule-scope.ts` needs no change.
 
 The "one file at a time" guard stays, because the loader evaluates sequentially.
 

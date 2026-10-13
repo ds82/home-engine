@@ -133,4 +133,30 @@ describe("scoped native timers in rule files", () => {
     await sleep(50);
     expect(globalThis.__fired).toEqual([]);
   });
+
+  it("never fires a timer that a timed-out file starts after the timeout", async () => {
+    writeFileSync(
+      join(root, "rules", "slow.ts"),
+      `
+      import { setTimeout as wait } from "node:timers/promises";
+      // A slow call outside the file's timers (like a network request) keeps it running.
+      await wait(40);
+      setTimeout(() => globalThis.__fired.push("late timer"), 10);
+      `,
+    );
+    const bundle = await bundleRuleFile({
+      rulesDir: join(root, "rules"),
+      file: "slow.ts",
+      buildDir: join(root, "build"),
+    });
+    const fileScope = new RuleScopeImpl("file:slow.ts", log);
+    await expect(
+      evaluateFile("slow.ts", () => importBundle(bundle.outfile), { fileScope, timeoutMs: 10 }),
+    ).rejects.toThrow(/did not finish within/);
+    // The next file is loading while the slow file starts its timer.
+    await load("next.ts", `await new Promise((resolve) => setTimeout(resolve, 50));`);
+    await sleep(30);
+    expect(globalThis.__fired).toEqual([]);
+    expect(fileScope.activeTimers).toBe(0);
+  });
 });
