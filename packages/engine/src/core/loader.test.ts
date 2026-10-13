@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -6,6 +6,7 @@ import { HttpServer } from "./http.js";
 import { RuleLoader } from "./loader.js";
 import { RuleRegistry } from "./rule-registry.js";
 import { coreSdkRuntime, installSdkRuntime } from "./sdk-runtime.js";
+import { namespaceFile, Storage } from "./storage.js";
 import { FakeSources } from "./testing/fake-sources.js";
 import { logCapture, type LogCapture } from "./testing/log-capture.js";
 
@@ -199,6 +200,38 @@ describe("RuleLoader", () => {
       );
     } finally {
       await server.stop();
+    }
+  });
+
+  it("keeps a removed rule's stored values and reads them again when it returns", async () => {
+    const storageDir = join(root, "data", "storage");
+    const storage = new Storage(storageDir, capture.log);
+    installSdkRuntime(coreSdkRuntime(undefined, storage));
+    try {
+      const source = [
+        'import { setup, store } from "@home-engine/sdk";',
+        'setup("counter", () => {',
+        '  store.set("starts", (store.get<number>("starts") ?? 0) + 1);',
+        "});",
+      ].join("\n");
+      write("counter.ts", source);
+      await loader.loadFile("counter.ts");
+      await storage.flush();
+
+      unlinkSync(join(root, "rules", "counter.ts"));
+      await loader.unloadFile("counter.ts");
+      await storage.flush();
+      expect(existsSync(join(storageDir, namespaceFile("counter#counter")))).toBe(true);
+
+      // After a restart, the restored file finds its old values.
+      const restarted = new Storage(storageDir, capture.log);
+      await restarted.load();
+      installSdkRuntime(coreSdkRuntime(undefined, restarted));
+      write("counter.ts", source);
+      await loader.loadFile("counter.ts");
+      expect(restarted.namespace("counter#counter").get("starts")).toBe(2);
+    } finally {
+      installSdkRuntime(coreSdkRuntime());
     }
   });
 
