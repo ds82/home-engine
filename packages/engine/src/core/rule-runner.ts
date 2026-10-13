@@ -31,6 +31,11 @@ export interface RunnerOptions {
   sources: TriggerSources;
   log: Logger;
   setupTimeoutMs?: number;
+  /**
+   * Called with a setup rule's scope before its setup function runs, so the rule can be
+   * reported as `starting` (with its listeners) until the setup has finished.
+   */
+  onStarting?: (scope: RuleScopeImpl) => void;
 }
 
 export interface StartedRule {
@@ -114,6 +119,7 @@ async function startSetupRule(
     listenCount: 0,
   };
   setupHosts.set(scope, host);
+  options.onStarting?.(scope);
 
   let result: unknown;
   let threw: unknown;

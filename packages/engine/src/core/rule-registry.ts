@@ -6,7 +6,8 @@ import type { RuleDefinition } from "./registration.js";
 import type { RuleScopeImpl } from "./rule-scope.js";
 import { earliest, startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
 
-export type RuleStatus = "running" | "disabled" | "failed";
+/** See "Rule status" in CONTEXT.md; only setup rules are ever `starting`. */
+export type RuleStatus = "starting" | "running" | "disabled" | "failed";
 
 export interface RuleInfo {
   id: string;
@@ -57,6 +58,8 @@ interface RuleEntry {
   loadedAt: Date;
   disabledBy: "option" | "config" | undefined;
   started: StartedRule | undefined;
+  /** A setup rule's scope while its setup function runs (before `started` is set). */
+  starting: RuleScopeImpl | undefined;
 }
 
 /** True when `ruleId` matches a DISABLED_RULES glob (`*` matches anything, `?` one char). */
@@ -113,10 +116,20 @@ export class RuleRegistry {
           : this.disabledPatterns.some((p) => matchesRulePattern(p, definition.id))
             ? "config"
             : undefined;
-      const entry: RuleEntry = { definition, loadedAt, disabledBy, started: undefined };
+      const entry: RuleEntry = {
+        definition,
+        loadedAt,
+        disabledBy,
+        started: undefined,
+        starting: undefined,
+      };
       entries.push(entry);
       if (!disabledBy) {
-        entry.started = await startRule(definition, this.runner);
+        entry.started = await startRule(definition, {
+          ...this.runner,
+          onStarting: (scope) => (entry.starting = scope),
+        });
+        entry.starting = undefined;
       }
     }
     return undefined;
@@ -182,7 +195,7 @@ export class RuleRegistry {
   summary(): { loaded: number; disabled: number; failed: number } {
     const counts = { loaded: 0, disabled: 0, failed: 0 };
     for (const rule of this.listRules()) {
-      if (rule.status === "running") {
+      if (rule.status === "running" || rule.status === "starting") {
         counts.loaded++;
       } else {
         counts[rule.status]++;
@@ -212,12 +225,15 @@ export class RuleRegistry {
 
   private info(entry: RuleEntry): RuleInfo {
     const { definition, started } = entry;
-    const scope = started?.scope;
+    const scope = started?.scope ?? entry.starting;
     const status: RuleStatus = entry.disabledBy
       ? "disabled"
-      : started?.status === "failed"
-        ? "failed"
-        : "running";
+      : entry.starting
+        ? "starting"
+        : started?.status === "failed"
+          ? "failed"
+          : "running";
+    const active = status === "running" || status === "starting";
     return {
       id: definition.id,
       name: definition.name,
@@ -230,8 +246,8 @@ export class RuleRegistry {
       lastRunAt: scope?.lastRunAt,
       lastError: (started?.error ?? scope?.lastError)?.message,
       triggerErrors: scope ? [...scope.triggerErrors.values()] : [],
-      activeTriggers: status === "running" ? (scope?.armedTriggers.size ?? 0) : 0,
-      scheduledTimers: status === "running" ? (scope?.activeTimers ?? 0) : 0,
+      activeTriggers: active ? (scope?.armedTriggers.size ?? 0) : 0,
+      scheduledTimers: active ? (scope?.activeTimers ?? 0) : 0,
       ...this.schedule(scope),
     };
   }

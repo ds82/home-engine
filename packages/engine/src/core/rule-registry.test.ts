@@ -3,6 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { RuleDefinition } from "./registration.js";
 import { RuleRegistry, matchesRulePattern } from "./rule-registry.js";
+import { listen } from "./rule-runner.js";
 import { FakeSources } from "./testing/fake-sources.js";
 import { logCapture } from "./testing/log-capture.js";
 
@@ -155,5 +156,46 @@ describe("RuleRegistry", () => {
       status: "failed",
       error: expect.stringMatching(/kitchen-motion.*other\.ts.*kitchen\.ts/),
     });
+  });
+
+  it("reports a setup rule as starting until its async setup resolves", async () => {
+    const { reg, fake } = registry();
+    let release: () => void = () => {};
+    const heard: string[] = [];
+    const loading = reg.loadFile("counter.ts", [
+      {
+        kind: "setup",
+        id: "counter#count",
+        name: "count",
+        file: "counter.ts",
+        options: {},
+        fn: async () => {
+          listen(motion, () => void heard.push("motion"));
+          await new Promise<void>((r) => (release = r)); // a slow service call
+        },
+      },
+      def("counter.ts", "after"),
+    ]);
+    await sleep(5);
+    expect(reg.rule("counter#count")).toMatchObject({ status: "starting", activeTriggers: 1 });
+    expect(reg.summary()).toEqual({ loaded: 1, disabled: 0, failed: 0 });
+
+    // The listener registered before the await already fires.
+    fake.change("binary_sensor.motion");
+    await sleep(5);
+    expect(heard).toEqual(["motion"]);
+
+    release();
+    await loading;
+    expect(reg.rule("counter#count")).toMatchObject({ status: "running" });
+    expect(reg.rule("counter#after")).toMatchObject({ status: "running" });
+  });
+
+  it("never reports a triggered rule as starting", async () => {
+    const { reg } = registry();
+    const loading = reg.loadFile("t.ts", [def("t.ts", "x")]);
+    expect(reg.rule("t#x")?.status).not.toBe("starting");
+    await loading;
+    expect(reg.rule("t#x")?.status).toBe("running");
   });
 });

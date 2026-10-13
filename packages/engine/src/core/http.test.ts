@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { BackendStatus } from "./adapter.js";
 import { HttpServer, LAG_LIMIT_MS, type StatusSources } from "./http.js";
-import type { RuleInfo } from "./rule-registry.js";
+import { RuleRegistry, type RuleInfo } from "./rule-registry.js";
 import { RuleScopeImpl } from "./rule-scope.js";
 import { invoke } from "./run-context.js";
 import { logCapture } from "./testing/log-capture.js";
+import { FakeSources } from "./testing/fake-sources.js";
 import { scopedTimers } from "./timers.js";
 
 const rule = (overrides: Partial<RuleInfo>): RuleInfo => ({
@@ -99,6 +100,37 @@ describe("HTTP endpoints", () => {
       status: 503,
       body: { ready: false, connected: true, rulesLoaded: false },
     });
+  });
+
+  it("lists a setup rule as starting while it sets up, and stays ready", async () => {
+    const registry = new RuleRegistry({
+      sources: new FakeSources().sources,
+      log: logCapture([]).log,
+    });
+    let release: () => void = () => {};
+    // A file added by hot reload after the initial load.
+    const loading = registry.loadFile("slow.ts", [
+      {
+        kind: "setup",
+        id: "slow#setup",
+        name: "setup",
+        file: "slow.ts",
+        options: {},
+        fn: () => new Promise<void>((r) => (release = r)),
+      },
+    ]);
+    const base = await start();
+    rules = registry.listRules();
+    expect((await get(`${base}/rules`)).body.rules).toEqual([
+      expect.objectContaining({ id: "slow#setup", status: "starting" }),
+    ]);
+    expect((await get(`${base}/health/ready`)).status).toBe(200);
+    release();
+    await loading;
+    rules = registry.listRules();
+    expect((await get(`${base}/rules`)).body.rules).toEqual([
+      expect.objectContaining({ id: "slow#setup", status: "running" }),
+    ]);
   });
 
   it("lists rules with status, errors and counts, plus engine metadata", async () => {
