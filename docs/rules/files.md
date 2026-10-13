@@ -117,6 +117,14 @@ rule("motion", onChange("binary_sensor.kitchen_motion", { to: "on" }), () => {},
 });
 ```
 
+Two files using the same explicit `id` are an error: the file loaded second fails as a whole,
+and the log names both files. While the engine runs, moving a file with explicit IDs keeps
+its rules and their stored values, because the old path is unloaded before the new one loads.
+That relies on the deletion and the addition reaching the engine within the 200 ms hot reload
+batch, which is the case for `mv`, editors and file managers. If the new path arrives on its
+own first (for example a slow copy followed by a delete), it collides with the old path and
+fails. Save the moved file once more and it loads.
+
 To switch rules off without editing them, list ID patterns in `DISABLED_RULES`, for example
 `lights/*, climate#heating`. `*` matches any characters, including `/` and `#`.
 

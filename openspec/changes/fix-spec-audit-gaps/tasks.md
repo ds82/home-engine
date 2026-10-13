@@ -22,7 +22,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - moving `rooms/kitchen.ts` with an explicit ID to `a/kitchen.ts` keeps the rule running and its stored values readable;
   - adding `hallway.js` next to a loaded `hallway.ts` logs the conflict and unloads `hallway.ts`;
   - removing one of the two loads the other again.
-- [ ] 3.3 Document in `docs/rules/files.md` that a move whose addition and deletion arrive more than 200 ms apart can collide, and that saving the moved file once more loads it (design decision 3). Verify the docs check passes.
+- [x] 3.3 Document in `docs/rules/files.md` that a move whose addition and deletion arrive more than 200 ms apart can collide, and that saving the moved file once more loads it (design decision 3). Verify the docs check passes.
 - [ ] 3.4 Add a test for the corrected duplicate-name scenario: an uncaught duplicate fails the whole file with the error logged with the file path, and a caught duplicate keeps the first rule. Verify it passes without code changes, or fix the code if it doesn't.
 
 ## 4. Rule status and engine messages (rule-lifecycle, engine-observability)
