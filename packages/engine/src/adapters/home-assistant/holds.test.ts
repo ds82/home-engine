@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FiredHolds } from "../../core/fired-holds.js";
+import { Storage, storageSdk } from "../../core/storage.js";
 import type { RuleDefinition } from "../../core/registration.js";
 import { listen, startRule, type StartedRule } from "../../core/rule-runner.js";
 import { logCapture, TOKEN } from "../../core/testing/log-capture.js";
@@ -124,6 +125,65 @@ describe("holds (for), restoration and immediate", () => {
       });
       await advance(60 * MIN);
       expect(events).toHaveLength(1);
+    });
+
+    it("fires both a rule and a listener that share one trigger object", async () => {
+      set("switch.lawn_watering", "off");
+      const watering = onChange("switch.lawn_watering", { to: "on", for: "20m" });
+      const events = await start(watering);
+      const heard: StateEvent[] = [];
+      running.push(
+        await startRule(
+          {
+            kind: "setup",
+            id: "test#setup",
+            name: "setup",
+            file: "test.ts",
+            options: {},
+            fn: () => void listen(watering, (e) => void heard.push(e as StateEvent)),
+          },
+          { sources: sources(), log: logCapture([]).log },
+        ),
+      );
+      set("switch.lawn_watering", "on");
+      await flush();
+      await advance(20 * MIN);
+      expect(events).toHaveLength(1);
+      expect(heard).toHaveLength(1);
+    });
+
+    it("keeps the fired-holds record out of the rule's store", async () => {
+      const storage = new Storage(join(dir, "storage"), logCapture([]).log);
+      await storage.load();
+      const { store } = storageSdk(storage);
+      set("switch.lawn_watering", "off");
+      let keys: string[] = [];
+      if (!client.isReady) {
+        await client.start();
+      }
+      running.push(
+        await startRule(
+          {
+            kind: "triggered",
+            id: "test#rule",
+            name: "rule",
+            file: "test.ts",
+            triggers: onChange("switch.lawn_watering", { to: "on", for: "20m" }),
+            body: () => {
+              store.set("runs", (store.get<number>("runs") ?? 0) + 1);
+              keys = store.keys();
+            },
+            options: {},
+          },
+          { sources: sources(), log: logCapture([]).log },
+        ),
+      );
+      set("switch.lawn_watering", "on");
+      await flush();
+      await advance(20 * MIN);
+      expect(fired.all()).toHaveLength(1);
+      expect(keys).toEqual(["runs"]);
+      expect(storage.namespace("test#rule").keys()).toEqual(["runs"]);
     });
 
     it("does not fire when the condition is interrupted", async () => {
