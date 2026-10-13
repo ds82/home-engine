@@ -10,7 +10,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 2. File evaluation attribution (rule-files, rule-lifecycle)
 
-- [ ] 2.1 Spike: a test checks that an AsyncLocalStorage store set around a dynamic `import()` of a bundled rule file is visible in the file's top-level code, after a top-level `await`, and in timers created there. Verify it passes. If it fails, switch to the fallback in design decision 2 and note that in the design.
+- [x] 2.1 Spike: a test checks that an AsyncLocalStorage store set around a dynamic `import()` of a bundled rule file is visible in the file's top-level code, after a top-level `await`, and in timers created there. Verify it passes. If it fails, switch to the fallback in design decision 2 and note that in the design.
 - [ ] 2.2 Replace the module-level registration slot in `core/registration.ts` with an AsyncLocalStorage registry that is marked `closed` on timeout or failure (design decision 2). Verify new tests: `rule()` from a trigger callback while another file is evaluated throws, and nothing is added to either file. A timed-out file's late `rule()` throws.
 - [ ] 2.3 Make a disposed rule scope cancel resources registered on it afterwards (`core/rule-scope.ts`). Verify a test where a timed-out file starts a timer after the timeout and the timer never fires.
 - [ ] 2.4 Log the evaluation timeout at `warn` (`core/loader.ts`). Verify a loader test that checks the level and the file name in the message.
