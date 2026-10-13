@@ -78,7 +78,7 @@ The old scenario ("first kept, second throws, logged") contradicts atomic evalua
 
 - `RuleInfo.status` gains `starting` (see **Rule status** in `CONTEXT.md`). The status is set while an async setup promise is pending and becomes `running` when it resolves. Only setup rules can be `starting`. Listeners registered before the setup's `await` already fire, and `/ready` ignores rule statuses: readiness is about the connection to Home Assistant.
 - `lastError` is built by one helper, `describeError`: `${name}: ${message}` for `Error`s (skipping the prefix for a plain `Error` and when the message already starts with the name), `String(x)` otherwise. It is used for rule errors and for the cause inside file errors (`Loading top.ts failed: ReferenceError: …`); the engine's own file errors already name the file and keep their message.
-- `triggerErrors` entries become `{ position, trigger, message }`:
+- `triggerErrors` entries gain `position` and `trigger` next to the existing `kind` and `message`, so the change is additive:
   - `position` is 1-based in the rule's trigger list, or in the listener's list for a setup rule.
   - `trigger` is a short description such as `ha-trigger numeric_state`.
 

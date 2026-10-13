@@ -4,7 +4,7 @@
 
 import { describeError } from "./errors.js";
 import type { RuleDefinition } from "./registration.js";
-import type { RuleScopeImpl } from "./rule-scope.js";
+import type { RuleScopeImpl, TriggerError } from "./rule-scope.js";
 import { earliest, startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
 
 /** See "Rule status" in CONTEXT.md; only setup rules are ever `starting`. */
@@ -24,7 +24,7 @@ export interface RuleInfo {
   /** Last error of a failed start, a body or a callback. */
   lastError: string | undefined;
   /** Triggers the backend rejected; the rule keeps running without them. */
-  triggerErrors: Array<{ kind: string; message: string }>;
+  triggerErrors: TriggerError[];
   /** Earliest next run of the rule's time triggers. */
   nextRun: Date | undefined;
   /** Next run per armed time trigger. */

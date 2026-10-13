@@ -31,6 +31,16 @@ export class RuleUnloadedError extends Error {
 
 type Cleanup = () => void | Promise<void>;
 
+/** A trigger the backend rejected; the rule keeps running without it. */
+export interface TriggerError {
+  kind: string;
+  /** 1-based position in the rule's trigger list (or the listener's, in a setup rule). */
+  position: number;
+  /** Short description, e.g. `ha-trigger numeric_state`. */
+  trigger: string;
+  message: string;
+}
+
 export class RuleScopeImpl implements RuleScope {
   readonly log: Logger;
   private readonly controller = new AbortController();
@@ -43,7 +53,7 @@ export class RuleScopeImpl implements RuleScope {
   /** Last error of a body, setup function or callback. */
   lastError: Error | undefined;
   /** Triggers the backend rejected, by trigger identity. */
-  readonly triggerErrors = new Map<string, { kind: string; message: string }>();
+  readonly triggerErrors = new Map<string, TriggerError>();
   /** Currently armed triggers (for next-run reporting). */
   readonly armedTriggers = new Set<{ kind: string; nextRun?: () => Date | undefined }>();
   /** Pending timers (sleep, after, native setTimeout/setInterval), for the status endpoint. */

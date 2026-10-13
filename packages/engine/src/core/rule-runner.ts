@@ -277,11 +277,18 @@ function arm(
       restoreHolds: how.restoreHolds,
       fire: (payload) => fire(trigger, payload),
       reportError: (error) => {
+        const position = index + 1;
+        const description = describeTriggerShort(trigger);
         scope.recordError(error);
-        scope.triggerErrors.set(identity, { kind: trigger.kind, message: error.message });
+        scope.triggerErrors.set(identity, {
+          kind: trigger.kind,
+          position,
+          trigger: description,
+          message: error.message,
+        });
         scope.log.error(
-          { err: error, trigger: trigger.kind },
-          `Trigger rejected: ${error.message}`,
+          { err: error, trigger: trigger.kind, position },
+          `Trigger ${position} (${description}) rejected: ${error.message}`,
         );
       },
     });
@@ -335,4 +342,20 @@ async function failed(scope: RuleScopeImpl, err: unknown, message?: string): Pro
     error: err instanceof Error ? err : new Error(String(err)),
     stop: () => scope.dispose(),
   };
+}
+
+/** A short description of a trigger for the status output, e.g. `ha-trigger numeric_state`. */
+export function describeTriggerShort(trigger: Trigger): string {
+  switch (trigger.kind) {
+    case "ha-trigger": {
+      const platform = trigger.config.trigger ?? trigger.config.platform;
+      return typeof platform === "string" ? `ha-trigger ${platform}` : "ha-trigger";
+    }
+    case "state":
+      return `state ${trigger.entities.join(", ")}`;
+    case "event":
+      return `event ${trigger.eventType}`;
+    default:
+      return trigger.kind;
+  }
 }

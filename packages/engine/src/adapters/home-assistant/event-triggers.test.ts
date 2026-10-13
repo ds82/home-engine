@@ -179,20 +179,46 @@ describe("event, native and startup triggers", () => {
       status: "running",
       lastError: expect.stringContaining("Invalid platform 'bogus'"),
       triggerErrors: [
-        { kind: "ha-trigger", message: expect.stringContaining("Invalid platform 'bogus'") },
+        {
+          kind: "ha-trigger",
+          position: 1,
+          trigger: "ha-trigger bogus",
+          message: expect.stringContaining("Invalid platform 'bogus'"),
+        },
       ],
     });
     expect(capture.entries()).toContainEqual(
       expect.objectContaining({
         level: "error",
         source: "test#rule",
-        message: expect.stringMatching(/^Trigger rejected/),
+        message: expect.stringMatching(/^Trigger 1 \(ha-trigger bogus\) rejected: /),
       }),
     );
 
     ha.setState("light.hall", "on");
     await flush();
     expect(events.map((e) => e.type)).toEqual(["state"]);
+  });
+
+  it("names the position and platform of the rejected one of two native triggers", async () => {
+    ha.validateTrigger = (t) =>
+      (t as { platform?: string }).platform === "numeric_state" ? "Expected a number" : undefined;
+    await load([
+      onTrigger({ platform: "zone", entity_id: "person.dennis", zone: "zone.home" }),
+      onTrigger({ platform: "numeric_state", entity_id: "sensor.humidity", above: "high" }),
+    ]);
+    await flush();
+    expect(registry.rule("test#rule")).toMatchObject({
+      status: "running",
+      triggerErrors: [
+        {
+          kind: "ha-trigger",
+          position: 2,
+          trigger: "ha-trigger numeric_state",
+          message: expect.stringContaining("Expected a number"),
+        },
+      ],
+    });
   });
 
   it("reports a rejection again when the trigger is re-subscribed after a reconnect", async () => {

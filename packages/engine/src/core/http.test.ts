@@ -145,7 +145,14 @@ describe("HTTP endpoints", () => {
       }),
       rule({
         id: "alarm.ts#siren",
-        triggerErrors: [{ kind: "trigger", message: "Invalid platform: nope" }],
+        triggerErrors: [
+          {
+            kind: "ha-trigger",
+            position: 2,
+            trigger: "ha-trigger nope",
+            message: "Invalid platform: nope",
+          },
+        ],
       }),
     ];
     const { status, body } = await get(`${base}/rules`);
@@ -169,7 +176,14 @@ describe("HTTP endpoints", () => {
       expect.objectContaining({
         id: "alarm.ts#siren",
         status: "running",
-        triggerErrors: [{ kind: "trigger", message: "Invalid platform: nope" }],
+        triggerErrors: [
+          {
+            kind: "ha-trigger",
+            position: 2,
+            trigger: "ha-trigger nope",
+            message: "Invalid platform: nope",
+          },
+        ],
       }),
     ]);
   });
