@@ -140,6 +140,56 @@ interface CompressedRow {
   lu: number;
   /** last_changed, epoch seconds; omitted when equal to lu. */
   lc?: number;
+  /** Attributes, unless requested without. */
+  a?: Record<string, unknown>;
+}
+
+/** A recorded value of a cumulative sensor, with `last_reset` for state class `total`. */
+export interface MeterReading {
+  value: number;
+  lastReset?: unknown;
+}
+
+/**
+ * How much a cumulative sensor rose over consecutive readings, the way Home Assistant's
+ * statistics count it (sensor/recorder.py: reset_detected and compile_statistics). The
+ * readings form cycles; each adds its last value minus its start, so a dip within a cycle
+ * only counts through the net change. A `total_increasing` value below 90 % of the previous
+ * one starts a new cycle, a changed `last_reset` does for `total`; a new cycle starts at 0.
+ * Negative `total_increasing` values are skipped. Undefined without readings.
+ */
+export function meterChange(
+  readings: readonly MeterReading[],
+  stateClass: "total" | "total_increasing",
+): number | undefined {
+  let sum = 0;
+  let cycleStart: number | undefined;
+  let previous: number | undefined;
+  let lastReset: unknown;
+  for (const { value, lastReset: reset } of readings) {
+    if (stateClass === "total_increasing" && value < 0) {
+      continue;
+    }
+    if (previous === undefined || cycleStart === undefined) {
+      cycleStart = value;
+      previous = value;
+      lastReset = reset;
+      continue;
+    }
+    const isReset =
+      stateClass === "total"
+        ? reset !== undefined && reset !== null && reset !== lastReset
+        : value < 0.9 * previous;
+    if (isReset) {
+      sum += previous - cycleStart;
+      cycleStart = 0;
+      lastReset = reset;
+    }
+    previous = value;
+  }
+  return previous === undefined || cycleStart === undefined
+    ? undefined
+    : sum + previous - cycleStart;
 }
 
 const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
@@ -256,6 +306,43 @@ export function createHistory(
       entries.push({ state: row.s, at: new Date(at) });
     }
     return entries;
+  }
+
+  /**
+   * changeSince from recorded states, or undefined when the recorder's history does not
+   * reach back to `start` (or has no numeric state), so statistics must be used instead.
+   */
+  async function meterHistory(entity: string, start: number, end: number) {
+    const stateClass =
+      client.states.get(entity)?.attributes.state_class === "total" ? "total" : "total_increasing";
+    // `total` needs last_reset on every row, which minimal responses leave out.
+    const withAttributes = stateClass === "total";
+    const result = await recorder<Record<string, CompressedRow[] | undefined>>(
+      `history of ${entity}`,
+      {
+        type: "history/history_during_period",
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+        entity_ids: [entity],
+        include_start_time_state: true,
+        significant_changes_only: false,
+        minimal_response: !withAttributes,
+        no_attributes: !withAttributes,
+      },
+    );
+    const rows = result[entity] ?? [];
+    const first = rows[0];
+    if (!first || Math.round(first.lu * 1000) > start) {
+      return undefined; // nothing in effect at `start`: older than the recorder keeps
+    }
+    const readings: MeterReading[] = [];
+    for (const row of rows) {
+      const value = numericState(row.s);
+      if (value !== undefined) {
+        readings.push({ value, lastReset: row.a?.last_reset });
+      }
+    }
+    return meterChange(readings, stateClass);
   }
 
   /** Hourly long-term statistics clipped to [start, end), as segments. */
@@ -387,14 +474,19 @@ export function createHistory(
     },
 
     /**
-     * Sums the hourly `change` statistics (which account for meter resets) from the first
-     * full hour after `since`. When the range ends now, the current, not yet compiled hour is
-     * added from the live state: its rise since the last hourly reading, or the whole reading
-     * after a reset.
+     * The exact change over the range from recorded states while the recorder still keeps
+     * them (meterChange). For older ranges, sums the hourly `change` statistics (which
+     * account for meter resets) from the first full hour after `since`; when the range ends
+     * now, the current, not yet compiled hour is added from the live state: its rise since
+     * the last hourly reading, or the whole reading after a reset.
      */
     async changeSince(entity, since, until) {
       checkEntity("changeSince", entity);
       const { start, end } = range("changeSince", since, until);
+      const fromHistory = await meterHistory(entity, start, end);
+      if (fromHistory !== undefined) {
+        return fromHistory;
+      }
       const from = Math.ceil(start / 3_600_000) * 3_600_000;
       const rows =
         from < end ? await statisticsRows(entity, from, end, "hour", ["change", "state"]) : [];
