@@ -7,6 +7,9 @@ import {
   registerSetupRule,
   registerTriggeredRule,
 } from "./registration.js";
+import { RuleScopeImpl } from "./rule-scope.js";
+import { invoke } from "./run-context.js";
+import { logCapture } from "./testing/log-capture.js";
 
 const motion: StateTrigger = { kind: "state", entities: ["binary_sensor.motion"] };
 const startup: StartupTrigger = { kind: "startup" };
@@ -98,6 +101,50 @@ describe("rule registration", () => {
     expect((err as Error).message).toMatch(/did not finish within/);
     await new Promise((r) => setTimeout(r, 120));
     expect(lateError).toBeInstanceOf(RegistrationError);
+  });
+
+  it("rejects a timed-out file's late registration while the next file is evaluated", async () => {
+    let lateError: unknown;
+    const slow = evaluateFile(
+      "slow.ts",
+      async () => {
+        await new Promise((r) => setTimeout(r, 40));
+        try {
+          registerTriggeredRule("late", motion, noop);
+        } catch (e) {
+          lateError = e;
+        }
+      },
+      { timeoutMs: 10 },
+    ).catch((e: unknown) => e);
+    expect(await slow).toBeInstanceOf(FileEvaluationError);
+    const next = await evaluateFile("next.ts", async () => {
+      registerTriggeredRule("own", motion, noop);
+      await new Promise((r) => setTimeout(r, 60)); // the slow file's late call happens now
+    });
+    expect(next.map((r) => r.id)).toEqual(["next#own"]);
+    expect(lateError).toBeInstanceOf(RegistrationError);
+    expect((lateError as Error).message).toMatch(/slow\.ts after its loading ended/);
+  });
+
+  it("rejects registration from a running rule while another file is evaluated", async () => {
+    const scope = new RuleScopeImpl("lights#motion", logCapture([]).log);
+    // A trigger fires 10 ms from now, in the middle of the next file's evaluation.
+    const fired = new Promise<void>((resolve) =>
+      setTimeout(
+        () =>
+          void invoke(scope, "body", () => registerTriggeredRule("sneaky", motion, noop)).done.then(
+            resolve,
+          ),
+        10,
+      ),
+    );
+    const rules = await evaluateFile("other.ts", async () => {
+      registerTriggeredRule("own", motion, noop);
+      await fired;
+    });
+    expect(rules.map((r) => r.id)).toEqual(["other#own"]);
+    expect(scope.lastError?.message).toMatch(/can only be called while its rule file is loaded/);
   });
 
   it("evaluates files one at a time", async () => {

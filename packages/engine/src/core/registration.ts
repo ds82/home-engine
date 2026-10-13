@@ -1,8 +1,11 @@
 // Rule registration while a rule file is evaluated (rule-files spec; design D4
-// "Registration context"). Files are evaluated one at a time; a module-level slot points at
-// the registry of the file being evaluated. `rule()` and `setup()` record into it and throw
-// when the slot is empty. Only after evaluation, including top-level await, has settled
-// successfully are the file's rules handed out as one unit; a failing file registers nothing.
+// "Registration context"). Each file is evaluated inside an AsyncLocalStorage holding its
+// registry, so the registry follows the file's own code (top-level await, timers it starts)
+// and nothing else. `rule()` and `setup()` record into it, and throw outside any file or
+// once the file's evaluation has ended: a timed-out file that keeps running cannot add rules,
+// to itself or to the file loaded after it. Only after evaluation, including top-level
+// await, has settled successfully are the file's rules handed out as one unit; a failing
+// file registers nothing.
 
 import type {
   RuleOptions,
@@ -12,6 +15,7 @@ import type {
   SetupOptions,
   Triggers,
 } from "@home-engine/sdk";
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { RuleScope } from "./rule-scope.js";
 
 export interface TriggeredRuleDefinition {
@@ -63,14 +67,23 @@ interface FileRegistry {
   scope: RuleScope | undefined;
   rules: RuleDefinition[];
   names: Set<string>;
+  /** Set when evaluation ended (settled, failed or timed out); registering then throws. */
+  closed: boolean;
 }
 
-/** The file currently being evaluated. Only one at a time. */
-let current: FileRegistry | undefined;
+/** The registry of the file whose code is running, if any. */
+const fileStorage = new AsyncLocalStorage<FileRegistry>();
 
-/** The scope of the file being evaluated, if any (for resources created at top level). */
+/** The file being evaluated. The loader evaluates one at a time. */
+let evaluating: FileRegistry | undefined;
+
+/**
+ * The scope of the file whose code is running (for resources created at top level, or
+ * later by code the file started). A failed or timed-out file's scope is disposed, so
+ * resources registered on it are released at once.
+ */
 export function currentFileScope(): RuleScope | undefined {
-  return current?.scope;
+  return fileStorage.getStore()?.scope;
 }
 
 /** `lights/hallway.ts` → `lights/hallway` (always with `/` separators). */
@@ -92,18 +105,24 @@ export async function evaluateFile(
     fileScope?: RuleScope & { dispose(): Promise<void> };
   } = {},
 ): Promise<RuleDefinition[]> {
-  if (current) {
+  if (evaluating) {
     throw new Error(
-      `Cannot evaluate ${file} while ${current.file} is being evaluated; files load one at a time.`,
+      `Cannot evaluate ${file} while ${evaluating.file} is being evaluated; files load one at a time.`,
     );
   }
-  const registry: FileRegistry = { file, scope: options.fileScope, rules: [], names: new Set() };
-  current = registry;
+  const registry: FileRegistry = {
+    file,
+    scope: options.fileScope,
+    rules: [],
+    names: new Set(),
+    closed: false,
+  };
+  evaluating = registry;
   const timeoutMs = options.timeoutMs ?? EVALUATION_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      evaluate(),
+      fileStorage.run(registry, evaluate),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
           () =>
@@ -118,6 +137,7 @@ export async function evaluateFile(
       }),
     ]);
   } catch (err) {
+    registry.closed = true;
     await options.fileScope?.dispose();
     if (err instanceof FileEvaluationError) {
       throw err;
@@ -127,9 +147,9 @@ export async function evaluateFile(
     });
   } finally {
     clearTimeout(timer);
-    // Late registrations (after a timeout) find the slot empty and throw.
-    if (current === registry) {
-      current = undefined;
+    registry.closed = true;
+    if (evaluating === registry) {
+      evaluating = undefined;
     }
   }
   return registry.rules;
@@ -186,12 +206,18 @@ export function registerSetupRule(
 }
 
 function activeRegistry(fn: string): FileRegistry {
-  if (!current) {
+  const registry = fileStorage.getStore();
+  if (!registry) {
     throw new RegistrationError(
       `${fn}() can only be called while its rule file is loaded (at top level or in code that runs during loading), not later from a callback.`,
     );
   }
-  return current;
+  if (registry.closed) {
+    throw new RegistrationError(
+      `${fn}() was called by ${registry.file} after its loading ended; rules can only be registered while the file is loaded.`,
+    );
+  }
+  return registry;
 }
 
 function add(registry: FileRegistry, definition: RuleDefinition): void {
