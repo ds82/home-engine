@@ -374,6 +374,11 @@ export function createWrites(
           'ws.command(): the message needs a "type", e.g. { type: "config/entity_registry/list" }',
         );
       }
+      if (dryRun && !isReadOnlyCommand(message.type)) {
+        const { ruleId, log: ruleLog } = caller();
+        logDryRun(ruleLog, ruleId, `ws ${message.type}`, { command: message });
+        return undefined as T;
+      }
       const session = client.connection.current;
       if (!session || !client.isReady) {
         throw new NotConnectedError(message.type);
@@ -425,6 +430,27 @@ export function createWrites(
     up: position("up", 100),
     down: position("down", 0),
   };
+}
+
+/**
+ * WebSocket commands known to only read. In dry-run mode `ws.command` sends these and logs
+ * every other command instead: an unknown command must not change Home Assistant.
+ */
+const READ_ONLY_COMMANDS = new Set([
+  "get_states",
+  "get_config",
+  "get_services",
+  "get_panels",
+  "auth/current_user",
+  "history/history_during_period",
+  "recorder/statistics_during_period",
+  "recorder/list_statistic_ids",
+  "recorder/get_statistics_metadata",
+  "search/related",
+]);
+
+export function isReadOnlyCommand(type: string): boolean {
+  return READ_ONLY_COMMANDS.has(type) || /^config\/.+\/(list|get)$/.test(type);
 }
 
 /** Home Assistant's own message, without the session's "<command> failed:" prefix. */

@@ -4,7 +4,7 @@ import { invoke } from "../../core/run-context.js";
 import { logCapture, TOKEN, type LogCapture } from "../../core/testing/log-capture.js";
 import { HaClient } from "./client.js";
 import { MockHomeAssistant } from "./testing/mock-server.js";
-import { createWrites, type Writes } from "./writes.js";
+import { createWrites, isReadOnlyCommand, type Writes } from "./writes.js";
 
 describe("dry-run mode", () => {
   let ha: MockHomeAssistant;
@@ -114,5 +114,50 @@ describe("dry-run mode", () => {
     await inRule(() => writes.on("light.porch"));
     expect(client.states.get("light.porch")?.state).toBe("on");
     expect(dryRunLogs()).toEqual([]);
+  });
+
+  it("sends read-only WebSocket commands and logs the others instead", async () => {
+    ha.onCommand("config/entity_registry/list", () => ({ result: [] }));
+    ha.onCommand("config/entity_registry/update", () => ({ result: {} }));
+    expect(await inRule(() => writes.ws.command({ type: "config/entity_registry/list" }))).toEqual(
+      [],
+    );
+    expect(
+      await inRule(() =>
+        writes.ws.command({
+          type: "config/entity_registry/update",
+          entity_id: "light.porch",
+          name: "Porch",
+        }),
+      ),
+    ).toBeUndefined();
+    const sent = ha.received.map((m) => m.type);
+    expect(sent).toContain("config/entity_registry/list");
+    expect(sent).not.toContain("config/entity_registry/update");
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "info",
+        source: "lights#porch",
+        message: "[dry-run] lights#porch ws config/entity_registry/update",
+        command: {
+          type: "config/entity_registry/update",
+          entity_id: "light.porch",
+          name: "Porch",
+        },
+      }),
+    );
+  });
+
+  it.each([
+    ["get_states", true],
+    ["config/area_registry/list", true],
+    ["config/device_registry/get", true],
+    ["recorder/statistics_during_period", true],
+    ["config/entity_registry/update", false],
+    ["call_service", false],
+    ["recorder/import_statistics", false],
+    ["some_integration/do_something", false],
+  ])("treats %s as read-only: %s", (type, readOnly) => {
+    expect(isReadOnlyCommand(type)).toBe(readOnly);
   });
 });
