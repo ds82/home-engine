@@ -130,4 +130,25 @@ describe("RuleLoader", () => {
       expect.objectContaining({ file: "hanging.ts", status: "failed" }),
     ]);
   });
+
+  it("fails a file whose explicit rule ID another file uses, logging both files", async () => {
+    const source =
+      'import { rule } from "@home-engine/sdk";\n' +
+      'rule("m", { kind: "startup" }, () => {}, { id: "kitchen" });\n';
+    write("a/kitchen.ts", source);
+    write("b/kitchen.ts", source);
+    await loader.loadAll();
+    expect(registry.rule("kitchen")).toMatchObject({ file: "a/kitchen.ts", status: "running" });
+    expect(registry.listFiles().find((f) => f.file === "b/kitchen.ts")).toMatchObject({
+      status: "failed",
+    });
+    const lines = capture.entries().filter((e) => e.file === "b/kitchen.ts");
+    expect(lines).toEqual([
+      expect.objectContaining({
+        level: "error",
+        otherFile: "a/kitchen.ts",
+        message: 'Rule ID "kitchen" in b/kitchen.ts is already used by a rule in a/kitchen.ts',
+      }),
+    ]);
+  });
 });

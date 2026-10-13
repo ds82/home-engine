@@ -87,7 +87,14 @@ export class RuleLoader {
           ? { timeoutMs: this.options.evaluationTimeoutMs }
           : {}),
       });
-      await registry.loadFile(file, rules, fileScope);
+      const collision = await registry.loadFile(file, rules, fileScope);
+      if (collision) {
+        log.error(
+          { file, ruleId: collision.ruleId, otherFile: collision.otherFile },
+          collision.message,
+        );
+        return false;
+      }
       log.info({ file, rules: rules.length }, `Loaded ${file} (${rules.length} rule(s))`);
       return true;
     } catch (err) {

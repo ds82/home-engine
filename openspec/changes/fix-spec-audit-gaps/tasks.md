@@ -17,7 +17,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 3. Rule identity and hot reload (rule-files, rule-lifecycle)
 
-- [ ] 3.1 Treat an explicit ID collision as a failed load: log at `error` naming both files, mark the file failed, and do not log "Loaded" (`core/loader.ts`, `core/rule-registry.ts`). Verify a loader test for the collision scenario.
+- [x] 3.1 Treat an explicit ID collision as a failed load: log at `error` naming both files, mark the file failed, and do not log "Loaded" (`core/loader.ts`, `core/rule-registry.ts`). Verify a loader test for the collision scenario.
 - [ ] 3.2 Split the hot-reload batch into an unload phase and a load phase, and add whole conflict groups to the affected set (`core/hot-reload.ts`, design decision 3). Verify hot-reload tests:
   - moving `rooms/kitchen.ts` with an explicit ID to `a/kitchen.ts` keeps the rule running and its stored values readable;
   - adding `hallway.js` next to a loaded `hallway.ts` logs the conflict and unloads `hallway.ts`;

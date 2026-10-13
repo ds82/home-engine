@@ -40,6 +40,18 @@ export interface FileInfo {
   error: string | undefined;
 }
 
+/** A rule file uses an explicit rule ID that another loaded file already uses. */
+export class RuleIdCollisionError extends Error {
+  constructor(
+    readonly ruleId: string,
+    readonly file: string,
+    readonly otherFile: string,
+  ) {
+    super(`Rule ID "${ruleId}" in ${file} is already used by a rule in ${otherFile}`);
+    this.name = "RuleIdCollisionError";
+  }
+}
+
 interface RuleEntry {
   definition: RuleDefinition;
   loadedAt: Date;
@@ -72,19 +84,19 @@ export class RuleRegistry {
   /**
    * Starts the rules of a successfully evaluated file (replacing a previous version must be
    * done with `unloadFile` first). If one of its explicit IDs is already used by another
-   * file, the whole file fails and nothing of it starts.
+   * file, the whole file fails, nothing of it starts, and the collision is returned.
    */
   async loadFile(
     file: string,
     definitions: readonly RuleDefinition[],
     fileScope?: RuleScopeImpl,
-  ): Promise<void> {
+  ): Promise<RuleIdCollisionError | undefined> {
     const loadedAt = new Date();
     const collision = this.findIdCollision(file, definitions);
     if (collision) {
       await fileScope?.dispose();
       this.fileFailed(file, collision);
-      return;
+      return collision;
     }
     if (fileScope) {
       this.fileScopes.set(file, fileScope);
@@ -107,6 +119,7 @@ export class RuleRegistry {
         entry.started = await startRule(definition, this.runner);
       }
     }
+    return undefined;
   }
 
   /** Records a file that failed to evaluate; its previous rules must already be unloaded. */
@@ -234,16 +247,17 @@ export class RuleRegistry {
     return { nextRun: earliest(nextRuns.map((n) => n.nextRun)), nextRuns };
   }
 
-  private findIdCollision(file: string, definitions: readonly RuleDefinition[]): Error | undefined {
+  private findIdCollision(
+    file: string,
+    definitions: readonly RuleDefinition[],
+  ): RuleIdCollisionError | undefined {
     for (const definition of definitions) {
       for (const [otherFile, entries] of this.rules) {
         if (otherFile === file) {
           continue;
         }
         if (entries.some((e) => e.definition.id === definition.id)) {
-          return new Error(
-            `Rule ID "${definition.id}" in ${file} is already used by a rule in ${otherFile}`,
-          );
+          return new RuleIdCollisionError(definition.id, file, otherFile);
         }
       }
     }
