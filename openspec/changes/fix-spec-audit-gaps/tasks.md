@@ -31,7 +31,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 - [x] 4.2 Add a `describeError` helper and use it for rule and file `lastError` (design decision 7). Verify that a real `ReferenceError` thrown in setup shows as `ReferenceError: foo is not defined` in `info()` and in `/rules`, without a hand-built RuleInfo.
 - [x] 4.3 Pass the trigger's 1-based position and short description along with a rejected native trigger, and expose `triggerErrors: [{ position, trigger, message }]`. Verify an event-trigger test with two `onTrigger` triggers where the second is rejected, and the `/rules` output.
 - [x] 4.4 Log `Rule started`, `Rule stopped`, setup failures and setup timeouts through the rule's child logger at the levels in design decision 8. Verify a logger test that these lines carry `source: <rule ID>` and the file lines still carry `source: engine`.
-- [ ] 4.5 Update the `/rules` description in the docs (status values, `triggerErrors` fields). Verify the docs check passes.
+- [x] 4.5 Update the `/rules` description in the docs (status values, `triggerErrors` fields). Verify the docs check passes.
 
 ## 5. Listeners (rule-triggers)
 
