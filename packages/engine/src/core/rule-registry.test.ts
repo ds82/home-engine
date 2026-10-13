@@ -198,4 +198,30 @@ describe("RuleRegistry", () => {
     await loading;
     expect(reg.rule("t#x")?.status).toBe("running");
   });
+
+  it("starts a file's other rules when one setup throws", async () => {
+    const { reg } = registry();
+    const setup = (name: string, fn: () => void): RuleDefinition => ({
+      kind: "setup",
+      id: `rooms#${name}`,
+      name,
+      file: "rooms.ts",
+      options: {},
+      fn,
+    });
+    await reg.loadFile("rooms.ts", [
+      setup("first", () => {}),
+      setup("broken", () => {
+        throw new Error("no lamp");
+      }),
+      setup("last", () => {}),
+      def("rooms.ts", "triggered"),
+    ]);
+    expect(reg.listRules().map((r) => [r.id, r.status])).toEqual([
+      ["rooms#first", "running"],
+      ["rooms#broken", "failed"],
+      ["rooms#last", "running"],
+      ["rooms#triggered", "running"],
+    ]);
+  });
 });

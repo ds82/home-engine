@@ -7,7 +7,7 @@ import { createScheduling } from "./scheduling.js";
 import { nextSunEvent, parseOffset, type Location } from "./sun.js";
 import { FakeClock } from "./testing/fake-clock.js";
 import { logCapture, type LogCapture } from "./testing/log-capture.js";
-import { sun } from "./trigger-constructors.js";
+import { daily, sun } from "./trigger-constructors.js";
 
 const HOUR = 3_600_000;
 const BERLIN: Location = { latitude: 52.52, longitude: 13.405, elevation: 34 };
@@ -102,6 +102,29 @@ describe("sun trigger", () => {
     env.moveTo(LONGYEARBYEN);
     await advanceHours(env, 24);
     expect(events).toHaveLength(1);
+  });
+
+  it("tells a rule with daily and sun triggers which one fired", async () => {
+    const env = scheduling("2026-10-11T00:00:00.000Z", BERLIN);
+    const events: RuleEvent[] = [];
+    await startRule(
+      {
+        kind: "triggered",
+        id: "test#mixed",
+        name: "mixed",
+        file: "test.ts",
+        triggers: [daily("07:00"), sun("sunset")],
+        body: (e: RuleEvent) => void events.push(e),
+        options: {},
+      },
+      { sources: env.s.sources, log: logCapture([]).log },
+    );
+    await advanceHours(env, 24);
+    expect(events.map((e) => [e.type, e.trigger.kind])).toEqual([
+      ["time", "daily"],
+      ["sun", "sun"],
+    ]);
+    expect((events[1] as SunEvent).event).toBe("sunset");
   });
 
   it("validates its arguments", () => {

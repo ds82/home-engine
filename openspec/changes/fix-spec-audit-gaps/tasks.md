@@ -76,7 +76,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - `TIME_ZONE` overrides the zone Home Assistant reports, and without it, Home Assistant's zone reaches the scheduler.
 
   Verify they pass.
-- [ ] 9.2 Rule tests:
+- [x] 9.2 Rule tests:
   - a rule with `[daily(…), sun(…)]` receives `trigger` and `type` that identify which one fired;
   - when one `setup` in a file throws, the file's other rules still start;
   - after a failed `npm install`, the engine still loads rule files, and a file with an unresolvable import fails on its own with a clear error.

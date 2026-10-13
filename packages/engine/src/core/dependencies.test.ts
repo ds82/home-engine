@@ -148,6 +148,30 @@ describe("rule dependency installation", () => {
         stderr: expect.any(String),
       }),
     );
+
+    // The engine still loads the rule files; one importing the missing package fails alone.
+    writeFileSync(
+      join(rulesDir, "plain.ts"),
+      'import { rule } from "@home-engine/sdk";\nrule("plain", { kind: "startup" }, () => {});\n',
+    );
+    writeFileSync(
+      join(rulesDir, "needs-package.ts"),
+      'import { thing } from "does-not-exist-anywhere";\nimport { rule } from "@home-engine/sdk";\nrule(String(thing), { kind: "startup" }, () => {});\n',
+    );
+    const registry = new RuleRegistry({ sources: new FakeSources().sources, log: capture.log });
+    const loader = new RuleLoader({
+      rulesDir,
+      buildDir: join(dataDir, ".build"),
+      registry,
+      log: capture.log,
+    });
+    await loader.loadAll();
+    expect(registry.listRules().map((r) => r.id)).toEqual(["plain#plain"]);
+    expect(registry.listFiles().find((f) => f.file === "needs-package.ts")).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/does-not-exist-anywhere/),
+    });
+    await registry.unloadAll();
   }, 60_000);
 
   it("does nothing without package.json or with NPM_INSTALL=false", async () => {
