@@ -109,6 +109,13 @@ describe("RuleLoader", () => {
     ]);
   });
 
+  it("evaluates an unchanged file again when it is loaded again", async () => {
+    write("x.ts", valid);
+    expect(await loader.loadFile("x.ts")).toBe(true);
+    expect(await loader.loadFile("x.ts")).toBe(true);
+    expect(registry.listRules().map((r) => r.id)).toEqual(["x#ok"]);
+  });
+
   it("logs an evaluation timeout as a warning naming the file", async () => {
     loader = new RuleLoader({
       rulesDir: join(root, "rules"),

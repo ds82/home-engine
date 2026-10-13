@@ -67,10 +67,17 @@ export async function bundleRuleFile(options: BundleOptions): Promise<BundleResu
   return { outfile, inputs };
 }
 
-/** Imports a bundle; stack traces map back to the original sources. */
+/** Counts imports, so loading an unchanged bundle again evaluates it again. */
+let imports = 0;
+
+/**
+ * Imports a bundle; stack traces map back to the original sources. Every call evaluates the
+ * file anew: the bundle's path depends only on its content, and the module cache would
+ * otherwise hand back the first evaluation when an unchanged file is loaded again.
+ */
 export async function importBundle(outfile: string): Promise<unknown> {
   process.setSourceMapsEnabled(true);
-  return import(pathToFileURL(outfile).href);
+  return import(`${pathToFileURL(outfile).href}?load=${++imports}`);
 }
 
 /**
