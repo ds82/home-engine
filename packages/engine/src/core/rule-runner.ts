@@ -325,8 +325,18 @@ function asList(triggers: Triggers): readonly Trigger[] {
   return Array.isArray(triggers) ? triggers : [triggers as Trigger];
 }
 
+/** Rule-level lines go through the rule's logger at debug level; files log at info. */
 function started(scope: RuleScopeImpl): StartedRule {
-  return { scope, status: "running", error: undefined, stop: () => scope.dispose() };
+  scope.log.debug("Rule started");
+  return { scope, status: "running", error: undefined, stop: () => stop(scope) };
+}
+
+async function stop(scope: RuleScopeImpl): Promise<void> {
+  const first = !scope.disposed;
+  await scope.dispose();
+  if (first) {
+    scope.log.debug("Rule stopped");
+  }
 }
 
 /** Marks the start as failed and releases everything the rule registered so far. */
