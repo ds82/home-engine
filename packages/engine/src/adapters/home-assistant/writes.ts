@@ -181,22 +181,36 @@ export function createWrites(
       : `${domain}.${service}`;
   };
 
-  const switchTo =
-    (fn: string, target: "on" | "off", force: boolean) =>
-    async (entity: string, data: Record<string, unknown> = {}): Promise<void> => {
+  /**
+   * Registers a helper's own promise with the safety net, described like the service call it
+   * makes (`light.turn_on → light.porch`). The inner call() promise is awaited by the helper,
+   * so a failure is reported once, for the promise the rule actually dropped.
+   */
+  const tracked = (service: (entity: string) => string, entity: unknown, run: Promise<void>) =>
+    trackWrite(
+      run,
+      typeof entity === "string" && ENTITY_ID.test(entity)
+        ? `${service(entity)} → ${entity}`
+        : String(entity),
+    );
+
+  const switchTo = (fn: string, target: "on" | "off", force: boolean) => {
+    const service = (entity: string): string =>
+      serviceFor(entity, target === "on" ? "turn_on" : "turn_off");
+    const run = async (entity: string, data: Record<string, unknown>): Promise<void> => {
       checkEntity(fn, entity);
       if (!force && client.states.get(entity)?.state === target) {
         caller().log.debug({ entity }, `${fn}(${entity}) skipped: already ${target}`);
         return;
       }
-      await call(serviceFor(entity, target === "on" ? "turn_on" : "turn_off"), data, {
-        entity_id: entity,
-      });
+      await call(service(entity), data, { entity_id: entity });
     };
+    return (entity: string, data: Record<string, unknown> = {}): Promise<void> =>
+      tracked(service, entity, run(entity, data));
+  };
 
-  const position =
-    (fn: "up" | "down", defaultPosition: number) =>
-    async (cover: string, target = defaultPosition): Promise<void> => {
+  const position = (fn: "up" | "down", defaultPosition: number) => {
+    const run = async (cover: string, target: number): Promise<void> => {
       checkEntity(fn, cover);
       if (!Number.isFinite(target) || target < 0 || target > 100) {
         throw new TypeError(`${fn}(): position must be between 0 (closed) and 100 (open)`);
@@ -208,6 +222,18 @@ export function createWrites(
       }
       await call("cover.set_cover_position", { position: target }, { entity_id: cover });
     };
+    return (cover: string, target = defaultPosition): Promise<void> =>
+      tracked(() => "cover.set_cover_position", cover, run(cover, target));
+  };
+
+  const toggle = (entity: string): Promise<void> => {
+    const service = (e: string): string => serviceFor(e, "toggle");
+    const run = async (): Promise<void> => {
+      checkEntity("toggle", entity);
+      await call(service(entity), {}, { entity_id: entity });
+    };
+    return tracked(service, entity, run());
+  };
 
   function fire(eventType: string, data: Record<string, unknown> = {}): Promise<void> {
     if (typeof eventType !== "string" || !/^[a-z0-9_.]+$/i.test(eventType)) {
@@ -395,10 +421,7 @@ export function createWrites(
     off: switchTo("off", "off", false),
     forceOn: switchTo("forceOn", "on", true),
     forceOff: switchTo("forceOff", "off", true),
-    toggle: async (entity) => {
-      checkEntity("toggle", entity);
-      await call(serviceFor(entity, "toggle"), {}, { entity_id: entity });
-    },
+    toggle,
     up: position("up", 100),
     down: position("down", 0),
   };

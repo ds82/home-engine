@@ -1,9 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { runScenario } from "./testing/run-scenario.js";
 
 // Unhandled rejections inside vitest would fail the test run, so the scenario runs in its
 // own Node process, bundled with esbuild.
@@ -17,33 +16,10 @@ describe("process safety net", () => {
     const cache = fileURLToPath(new URL("../../node_modules/.cache", import.meta.url));
     mkdirSync(cache, { recursive: true });
     dir = mkdtempSync(join(cache, "he-safety-"));
-    const outfile = join(dir, "scenario.mjs");
-    await build({
-      entryPoints: [
-        fileURLToPath(new URL("./testing/fixtures/safety-net-scenario.ts", import.meta.url)),
-      ],
-      outfile,
-      bundle: true,
-      platform: "node",
-      format: "esm",
-      packages: "external",
-      logLevel: "silent",
-    });
-    let stdout: string;
-    try {
-      stdout = execFileSync(process.execPath, [outfile], {
-        encoding: "utf8",
-      });
-      exitCode = 0;
-    } catch (err) {
-      const e = err as { status: number; stdout: string };
-      stdout = e.stdout;
-      exitCode = e.status;
-    }
-    entries = stdout
-      .split("\n")
-      .filter((line) => line.startsWith("{"))
-      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    ({ entries, exitCode } = await runScenario(
+      dir,
+      fileURLToPath(new URL("./testing/fixtures/safety-net-scenario.ts", import.meta.url)),
+    ));
   });
 
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
