@@ -60,7 +60,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - a `total` sensor with a changed `last_reset`;
   - a range before the retention window that still uses statistics.
 - [x] 7.3 Probe once whether an entity is recorded before logging the "no recorded history" warning (design decision 10). Verify tests: `stateAt` before the first record logs nothing, and an excluded entity still warns once.
-- [ ] 7.4 Update `docs/rules/history.md` for `changeSince` (exact ranges within retention, hourly resolution before it). Verify the docs check passes.
+- [x] 7.4 Update `docs/rules/history.md` for `changeSince` (exact ranges within retention, hourly resolution before it). Verify the docs check passes.
 
 ## 8. Storage (rule-storage)
 

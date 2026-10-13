@@ -89,11 +89,20 @@ rule("energy today", daily("23:59"), async () => {
 });
 ```
 
-`changeSince` works for sensors with state class `total` or `total_increasing` and uses Home
-Assistant's statistics, which handle meter resets. Statistics are compiled per hour, so it
-counts from the first full hour after `since`: start at a full hour (such as midnight) for an
-exact result. When the range ends now, the current hour is added from the live reading. It
-resolves to `undefined` for sensors without statistics.
+`changeSince` works for sensors with state class `total` or `total_increasing` and counts
+meter resets the way Home Assistant's statistics (and so the Energy dashboard) do:
+
+- For `total_increasing`, a reading below 90 % of the previous one is a reset, and the new
+  reading counts from 0: `50.0 → 52.0 → 0.0 → 1.5` is 3.5. A smaller dip is not a reset; it
+  only lowers the net change: `1000.0 → 999.9 → 1000.2` is 0.2.
+- For `total`, a change of the `last_reset` attribute starts a new cycle.
+
+While Home Assistant's recorder keeps the states (10 days by default), the result covers
+exactly the range you ask for, including a partial first hour and ranges shorter than an hour.
+For older ranges it falls back to the hourly long-term statistics, which count from the first
+full hour after `since`; start such a range at a full hour (such as midnight) for an exact
+result. When it ends now, the current hour is added from the live reading. `changeSince`
+resolves to `undefined` when there is neither recorded history nor statistics.
 
 ## Long-term statistics
 
