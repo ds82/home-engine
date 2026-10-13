@@ -5,7 +5,7 @@
 Group 1 is merged to `main` on its own once CI is green, before the other groups (see the design's rollout).
 
 - [x] 1.1 Add failing tests with a fake clock that jumps 3 days ahead past pending timers. With `daily("07:00")`, `cron`, `every("1m")` and `sun("sunset")`, the body does not run for the missed times, the skip is logged at `debug`, and the next run is the first one after the jump. With `every("1m")` there is no stack overflow. A run 20 s late still fires. Verify the tests fail on the current code for the right reason.
-- [ ] 1.2 Re-arm from `clock.now()` and skip runs more than `LATE_LIMIT_MS` (60 s) late in `core/scheduling.ts` (calendar and `every` sources) and `core/sun.ts` (design decision 1). Verify the 1.1 tests and the existing scheduler, sun, calendar and next-run tests pass.
+- [x] 1.2 Re-arm from `clock.now()` and skip runs more than `LATE_LIMIT_MS` (60 s) late in `core/scheduling.ts` (calendar and `every` sources) and `core/sun.ts` (design decision 1). Verify the 1.1 tests and the existing scheduler, sun, calendar and next-run tests pass.
 - [ ] 1.3 Document in `docs/rules/scheduling.md` that runs missed during a suspend are skipped while `after()`/`sleep()` still run. Verify `node scripts/check-docs.mjs` passes.
 
 ## 2. File evaluation attribution (rule-files, rule-lifecycle)

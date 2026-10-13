@@ -9,6 +9,8 @@ import { runInScope } from "./run-context.js";
 
 export interface RuleScope {
   readonly ruleId: string;
+  /** The rule's logger: its lines carry the rule ID as their source. */
+  readonly log: Logger;
   /** Aborted when the rule is unloaded. */
   readonly signal: AbortSignal;
   /**

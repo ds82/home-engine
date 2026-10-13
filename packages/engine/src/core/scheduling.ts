@@ -1,7 +1,8 @@
 // Delays and intervals for rules (rule-scheduler: Delay, Interval). All waits go through the
 // drift-proof Clock. sleep and after belong to the calling run: a restart-mode abort or the
 // rule's unload cancels them. The every trigger fires on a fixed grid of absolute times, so
-// it does not drift with the time its bodies take.
+// it does not drift with the time its bodies take. Time triggers re-arm from now and skip a
+// run that starts more than LATE_LIMIT_MS late (a missed run, e.g. after a host suspend).
 
 import type { Duration, TimerHandle, Weekday } from "@home-engine/sdk";
 import { Cron } from "croner";
@@ -9,7 +10,7 @@ import { parseDuration } from "./duration.js";
 import { requireRun, invoke } from "./run-context.js";
 import type { Logger } from "./logger.js";
 import { createSun, type Location, type SunHelpers } from "./sun.js";
-import type { Clock } from "./timer.js";
+import { startsOnTime, type Clock } from "./timer.js";
 import { parseLocalTime, weekdayNumbers } from "./trigger-constructors.js";
 import type { TriggerSource, TriggerSources } from "./trigger-source.js";
 
@@ -103,6 +104,7 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       throw new Error(`every source cannot arm ${trigger.kind}`);
     }
     const interval = parseDuration(trigger.interval);
+    const label = `every(${JSON.stringify(trigger.interval)})`;
     // The grid passes through the alignTo time (in the Site's time zone) or the start time.
     const anchor = trigger.alignTo
       ? nextLocalTime(trigger.alignTo, timeZone(), clock.now())
@@ -123,8 +125,11 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
         if (stopped) {
           return;
         }
-        fireAt(at);
-        armNext(at);
+        const now = clock.now();
+        if (startsOnTime(at, now, label, context.scope.log)) {
+          fireAt(at);
+        }
+        armNext(now);
       }, at - clock.now());
     };
     if (trigger.immediate) {
@@ -142,8 +147,8 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
 
   /**
    * `daily` and `cron`: wait for the next run computed in the Site's time zone, fire, repeat.
-   * The next run is always computed from now, so runs missed while the engine was down are
-   * not replayed. A Site change recomputes the pending run.
+   * The next run is always computed from now, so runs missed while the engine was down or
+   * the host was suspended are not replayed. A Site change recomputes the pending run.
    */
   const calendarSource: TriggerSource = (trigger, context) => {
     if (trigger.kind !== "daily" && trigger.kind !== "cron") {
@@ -153,6 +158,10 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
       trigger.kind === "daily"
         ? nextDaily(trigger.time, trigger.weekdays, timeZone(), after)
         : new Cron(trigger.expression, tzOption(timeZone())).nextRun(new Date(after))?.getTime();
+    const label =
+      trigger.kind === "daily"
+        ? `daily(${JSON.stringify(trigger.time)})`
+        : `cron(${JSON.stringify(trigger.expression)})`;
 
     let cancel: () => void = () => {};
     let stopped = false;
@@ -168,8 +177,11 @@ export function createScheduling(options: SchedulingOptions): Scheduling {
         if (stopped) {
           return;
         }
-        context.fire({ type: "time", scheduledAt: new Date(at) });
-        arm(at);
+        const now = clock.now();
+        if (startsOnTime(at, now, label, context.scope.log)) {
+          context.fire({ type: "time", scheduledAt: new Date(at) });
+        }
+        arm(now);
       }, at - clock.now());
     };
     arm(clock.now());

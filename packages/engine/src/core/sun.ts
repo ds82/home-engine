@@ -1,12 +1,13 @@
 // Sun events and helpers (rule-scheduler: Sun events, Sun state helpers; design D6). Times
 // come from suncalc for the Site's coordinates, one local day at a time. Days without the
-// event (polar day or night) are skipped and logged at debug level.
+// event (polar day or night) are skipped and logged at debug level, and so are missed runs
+// (see LATE_LIMIT_MS).
 
 import type { SunEventName } from "@home-engine/sdk";
 import { getPosition, getTimes } from "suncalc";
 import { parseDuration } from "./duration.js";
 import type { Logger } from "./logger.js";
-import type { Clock } from "./timer.js";
+import { startsOnTime, type Clock } from "./timer.js";
 import type { TriggerSource } from "./trigger-source.js";
 
 export interface Location {
@@ -128,6 +129,7 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
       throw new Error(`sun source cannot arm ${trigger.kind}`);
     }
     const offsetMs = trigger.offset === undefined ? 0 : parseOffset(trigger.offset);
+    const label = `sun(${JSON.stringify(trigger.event)})`;
     let cancel: () => void = () => {};
     let stopped = false;
     let pending: number | undefined;
@@ -164,8 +166,11 @@ export function createSun(options: SunOptions): { source: TriggerSource; helpers
             if (stopped) {
               return;
             }
-            context.fire({ type: "sun", event: trigger.event, scheduledAt: new Date(at) });
-            arm(at);
+            const now = clock.now();
+            if (startsOnTime(at, now, label, context.scope.log)) {
+              context.fire({ type: "sun", event: trigger.event, scheduledAt: new Date(at) });
+            }
+            arm(now);
           }, at - clock.now());
           return;
         }
