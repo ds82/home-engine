@@ -2,6 +2,10 @@ import type { EntityId, EntityOf } from "./entities.js";
 import { notInEngine } from "./stub.js";
 import type { Duration, ValueFilter } from "./triggers.js";
 
+/**
+ * What {@link waitFor} waits for.
+ * @category Triggers
+ */
 export interface WaitFilter {
   /** Previous value (a transition is required). */
   from?: ValueFilter;
@@ -11,6 +15,10 @@ export interface WaitFilter {
   attribute?: string;
 }
 
+/**
+ * Options of {@link waitFor}.
+ * @category Triggers
+ */
 export interface WaitOptions {
   /** Give up after this long; the promise then resolves with undefined. */
   timeout?: Duration;
@@ -21,6 +29,7 @@ export interface WaitOptions {
 /**
  * Waits until an entity matches `filter`. Resolves with its state, or with undefined on
  * timeout. Rejects only when the run is aborted or the rule is unloaded.
+ * @category Triggers
  */
 export function waitFor<Id extends EntityId>(
   entity: Id,

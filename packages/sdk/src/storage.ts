@@ -3,6 +3,10 @@
 
 import { notInEngine } from "./stub.js";
 
+/**
+ * A persistent key/value store of plain JSON data: {@link store} or {@link shared}.
+ * @category Storage
+ */
 export interface KeyValueStore {
   /** The stored value (a copy), or undefined. */
   get<T = unknown>(key: string): T | undefined;
@@ -10,6 +14,7 @@ export interface KeyValueStore {
   set(key: string, value: unknown): void;
   /** Removes a key; true if it existed. */
   delete(key: string): boolean;
+  /** All keys currently stored. */
   keys(): string[];
 }
 
@@ -20,8 +25,14 @@ const stub = (name: string): KeyValueStore => ({
   keys: () => notInEngine(`${name}.keys`),
 });
 
-/** The calling rule's own store; other rules cannot see its keys. */
+/**
+ * The calling rule's own store; other rules cannot see its keys.
+ * @category Storage
+ */
 export const store: KeyValueStore = stub("store");
 
-/** A store all rules read and write, for intentional coordination between rules. */
+/**
+ * A store all rules read and write, for intentional coordination between rules.
+ * @category Storage
+ */
 export const shared: KeyValueStore = stub("shared");
