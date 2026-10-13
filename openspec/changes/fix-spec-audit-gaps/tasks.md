@@ -2,6 +2,8 @@
 
 ## 1. Time schedules after a suspend (rule-scheduler)
 
+Group 1 is merged to `main` on its own once CI is green, before the other groups (see the design's rollout).
+
 - [ ] 1.1 Add failing tests with a fake clock that jumps 3 days ahead past pending timers. With `daily("07:00")`, `cron`, `every("1m")` and `sun("sunset")`, the body does not run for the missed times, the skip is logged at `debug`, and the next run is the first one after the jump. With `every("1m")` there is no stack overflow. A run 20 s late still fires. Verify the tests fail on the current code for the right reason.
 - [ ] 1.2 Re-arm from `clock.now()` and skip runs more than `LATE_LIMIT_MS` (60 s) late in `core/scheduling.ts` (calendar and `every` sources) and `core/sun.ts` (design decision 1). Verify the 1.1 tests and the existing scheduler, sun, calendar and next-run tests pass.
 - [ ] 1.3 Document in `docs/rules/scheduling.md` that runs missed during a suspend are skipped while `after()`/`sleep()` still run. Verify `node scripts/check-docs.mjs` passes.
@@ -20,12 +22,12 @@
   - moving `rooms/kitchen.ts` with an explicit ID to `a/kitchen.ts` keeps the rule running and its stored values readable;
   - adding `hallway.js` next to a loaded `hallway.ts` logs the conflict and unloads `hallway.ts`;
   - removing one of the two loads the other again.
-- [ ] 3.3 Handle a move split across two debounce batches: when a batch unloads a file whose rule ID blocked another file, reload the blocked file. Verify a hot-reload test where the addition and the deletion arrive more than 200 ms apart.
+- [ ] 3.3 Document in `docs/rules/files.md` that a move whose addition and deletion arrive more than 200 ms apart can collide, and that saving the moved file once more loads it (design decision 3). Verify the docs check passes.
 - [ ] 3.4 Add a test for the corrected duplicate-name scenario: an uncaught duplicate fails the whole file with the error logged with the file path, and a caught duplicate keeps the first rule. Verify it passes without code changes, or fix the code if it doesn't.
 
 ## 4. Rule status and engine messages (rule-lifecycle, engine-observability)
 
-- [ ] 4.1 Add status `starting` to `RuleInfo`, set while an async setup promise is pending (`core/rule-runner.ts`, `core/rule-registry.ts`). Verify a test that reads `info()` before and after the setup promise resolves, and an HTTP test that `/rules` shows `starting`.
+- [ ] 4.1 Add status `starting` to `RuleInfo`, set while an async setup promise is pending (`core/rule-runner.ts`, `core/rule-registry.ts`). Verify a test that reads `info()` before and after the setup promise resolves, a test that a listener registered before the `await` fires while the rule is `starting`, and HTTP tests that `/rules` shows `starting` and `/ready` is unaffected.
 - [ ] 4.2 Add a `describeError` helper and use it for rule and file `lastError` (design decision 7). Verify that a real `ReferenceError` thrown in setup shows as `ReferenceError: foo is not defined` in `info()` and in `/rules`, without a hand-built RuleInfo.
 - [ ] 4.3 Pass the trigger's 1-based position and short description along with a rejected native trigger, and expose `triggerErrors: [{ position, trigger, message }]`. Verify an event-trigger test with two `onTrigger` triggers where the second is rejected, and the `/rules` output.
 - [ ] 4.4 Log `Rule started`, `Rule stopped`, setup failures and setup timeouts through the rule's child logger at the levels in design decision 8. Verify a logger test that these lines carry `source: <rule ID>` and the file lines still carry `source: engine`.
@@ -49,14 +51,16 @@
 
 ## 7. History (ha-history)
 
-- [ ] 7.1 Compute `changeSince` from state history within the recorder's retention (start state included, `unavailable`/`unknown` skipped, `total_increasing` decreases and `total` `last_reset` changes as resets), and fall back to statistics before it (design decision 9). Verify tests for:
+- [ ] 7.1 Check Home Assistant's reset detection for `total_increasing` (the 10 % threshold and the handling of smaller dips) in its recorder code, and correct the "Small dip" scenario and design decision 9 if they differ. Verify by citing the source lines in the commit message.
+- [ ] 7.2 Compute `changeSince` from state history within the recorder's retention (start state included, `unavailable`/`unknown` skipped, resets detected as in 7.1, `total` `last_reset` changes as resets), and fall back to statistics before it (design decision 9). Verify tests for:
   - a range starting at 12:34;
   - a 10-minute range;
   - a reset within the range;
+  - a small dip that is not a reset;
   - a `total` sensor with a changed `last_reset`;
   - a range before the retention window that still uses statistics.
-- [ ] 7.2 Probe once whether an entity is recorded before logging the "no recorded history" warning (design decision 10). Verify tests: `stateAt` before the first record logs nothing, and an excluded entity still warns once.
-- [ ] 7.3 Update `docs/rules/history.md` for `changeSince` (exact ranges within retention, hourly resolution before it). Verify the docs check passes.
+- [ ] 7.3 Probe once whether an entity is recorded before logging the "no recorded history" warning (design decision 10). Verify tests: `stateAt` before the first record logs nothing, and an excluded entity still warns once.
+- [ ] 7.4 Update `docs/rules/history.md` for `changeSince` (exact ranges within retention, hourly resolution before it). Verify the docs check passes.
 
 ## 8. Storage (rule-storage)
 

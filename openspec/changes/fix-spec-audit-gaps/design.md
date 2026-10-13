@@ -57,7 +57,7 @@ In `core/hot-reload.ts`, the batch now:
 
 A moved file is a deletion plus an addition in the same batch, so the old file's rule IDs are free before the new file loads.
 
-*Edge:* a move whose two events land in different debounce batches. The addition can come first and collide. The collision is then logged (Decision 4). The deletion's batch frees the ID, and that batch also reloads any file that failed with a collision against the freed ID. That needs the registry to remember which file blocked which.
+*Edge, accepted:* a move whose two events land in different debounce batches (more than 200 ms apart). The addition can come first and collide. The collision is then logged as an error naming both files (Decision 4), and saving the moved file once more loads it. Editors and `mv` produce one batch in practice, so the engine does not track which file blocked which. The workaround is documented in `docs/rules/files.md`.
 
 ### 4. Explicit ID collision is a load failure
 
@@ -76,7 +76,7 @@ The old scenario ("first kept, second throws, logged") contradicts atomic evalua
 
 ### 7. Rule status `starting`, error names, trigger errors
 
-- `RuleInfo.status` gains `starting`. The status is set while an async setup promise is pending and becomes `running` when it resolves.
+- `RuleInfo.status` gains `starting` (see **Rule status** in `CONTEXT.md`). The status is set while an async setup promise is pending and becomes `running` when it resolves. Only setup rules can be `starting`. Listeners registered before the setup's `await` already fire, and `/ready` ignores rule statuses: readiness is about the connection to Home Assistant.
 - `lastError` is built by one helper, `describeError`: `${name}: ${message}` for `Error`s (skipping the prefix when the message already starts with the name), `String(x)` otherwise. It is used for rule and file errors.
 - `triggerErrors` entries become `{ position, trigger, message }`:
   - `position` is 1-based in the rule's trigger list, or in the listener's list for a setup rule.
@@ -95,9 +95,11 @@ Within the recorder's retention, `changeSince` now uses state history instead of
 - It skips `unavailable` and `unknown` states.
 - It sums the increases between consecutive values.
 
-Resets follow Home Assistant's rules:
-- For `total_increasing`, any decrease starts a new cycle, and the new value counts as the increase from 0.
+Resets follow Home Assistant's statistics exactly, so `changeSince` agrees with the Energy dashboard:
+- For `total_increasing`, only a drop of more than 10 % starts a new cycle, and the new value then counts as the increase from 0. A smaller dip is not a reset and is counted as Home Assistant counts it.
 - For `total`, a change of the `last_reset` attribute starts a new cycle.
+
+The 10 % threshold and the handling of small dips are taken from Home Assistant's recorder code (`homeassistant/components/sensor/recorder.py`) and verified there during implementation. If Home Assistant's handling differs from the "Small dip" scenario, the scenario is corrected to match Home Assistant.
 
 Before the retention window, it falls back to hourly `change` statistics as today, with the partial-hour limitation documented. That is the same split `averageSince` already uses.
 
@@ -147,5 +149,7 @@ The CI image `docker:27-cli` ships the Compose plugin.
 - **[Shutdown race, not addressed]** The engine's 10 s limit equals Docker's default stop timeout, so on a hanging teardown Docker may kill the process before the "blocked by" line. → Document `stop_grace_period: 15s` in the Compose example.
 
 ## Migration Plan
+
+**Rollout:** one OpenSpec change, several merges. Group 1 (the schedule fix after a suspend) is implemented first and merged to `main` on its own as soon as CI is green. The remaining groups follow in two or three batches, each merged when green.
 
 No data migration. `/rules` consumers see a new status value and extra fields in `triggerErrors`, which is additive. Rules that call `listen()` twice with the same `id` now fail at setup with a clear error. Any such rule already had a latent bug. Rollback is a revert of the commits.

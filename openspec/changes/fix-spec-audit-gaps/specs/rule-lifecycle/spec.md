@@ -24,6 +24,10 @@ After successful file evaluation, the engine SHALL start each enabled rule: for 
 - **WHEN** a setup rule is `async` and awaits a service call before registering listeners
 - **THEN** the engine awaits it, reports the rule as `starting` while the promise is pending, and marks the rule as running once the promise resolves
 
+#### Scenario: Listener fires while starting
+- **WHEN** an async setup function registers a listener, then awaits a slow service call, and the listener's trigger fires meanwhile
+- **THEN** the listener runs although the rule is still `starting`, and the engine's readiness is not affected by the rule's status
+
 #### Scenario: Setup timeout
 - **WHEN** a setup function's promise does not settle within 30 seconds
 - **THEN** the engine logs a warning naming the rule, marks it as failed, and disposes any resources it registered so far

@@ -29,6 +29,9 @@ The identity of a rule: `<file path>#<rule name>` by default, or an explicit ID 
 **Run**:
 One execution of a triggered rule's body or a listener's callback, caused by one firing.
 
+**Rule status**:
+Where a rule stands: `starting` (a setup rule whose async setup function has not finished yet; its listeners already fire), `running`, `disabled` (by configuration or `enabled: false`) or `failed` (its file or setup failed). Triggered rules are never `starting`.
+
 **Concurrency mode**:
 How a triggered rule handles a firing while a previous run is still in progress: `parallel`, `single`, `queued` or `restart`.
 
@@ -46,6 +49,10 @@ _Avoid_: debounce, delay
 
 **Restored hold**:
 A hold rebuilt from an entity's last change time when its rule starts, so reloads and restarts don't lose it. Holds that already fired are not restored again; holds with a `from` filter are not restored at all.
+
+**Missed run**:
+A time-trigger firing whose planned time passed while the engine was stopped, or more than a minute before the engine could run it (for example while the host was suspended). Missed runs are skipped, never replayed.
+_Avoid_: catch-up, late run
 
 **Change cause**:
 Who caused a state change: the engine, when a rule wrote exactly this change (optionally naming that rule), or something external (a device, a person, a backend automation, even one reacting to an engine write).

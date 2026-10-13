@@ -21,6 +21,10 @@
 - **WHEN** a `total_increasing` meter goes 50.0 → 52.0 → 0.0 (reset) → 1.5 within the range
 - **THEN** `changeSince` resolves to 3.5
 
+#### Scenario: Small dip is not a reset
+- **WHEN** a `total_increasing` meter goes 1000.0 → 999.9 → 1000.2 within the range
+- **THEN** `changeSince` treats the dip as Home Assistant's statistics do (no reset) and resolves to 0.2
+
 ### Requirement: History unavailable
 When Home Assistant's recorder is not available, history functions SHALL reject with an error stating that the recorder is required. For entities excluded from recording, they SHALL resolve to an empty result or `undefined` and log a warning once per entity and rule. A query that is empty only because its range lies before the entity's first record SHALL NOT log this warning.
 
