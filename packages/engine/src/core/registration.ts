@@ -16,6 +16,7 @@ import type {
   Triggers,
 } from "@home-engine/sdk";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { describeError } from "./errors.js";
 import type { RuleScope } from "./rule-scope.js";
 
 export interface TriggeredRuleDefinition {
@@ -144,7 +145,7 @@ export async function evaluateFile(
     if (err instanceof FileEvaluationError) {
       throw err;
     }
-    throw new FileEvaluationError(file, `Loading ${file} failed: ${errorMessage(err)}`, {
+    throw new FileEvaluationError(file, `Loading ${file} failed: ${describeError(err)}`, {
       cause: err,
     });
   } finally {
@@ -249,8 +250,4 @@ function ruleId(file: string, name: string, explicit: string | undefined): strin
     );
   }
   return explicit;
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

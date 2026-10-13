@@ -5,6 +5,7 @@
 import { join } from "node:path";
 import { DependencyGraph, bundleRuleFile, importBundle } from "./bundler.js";
 import { discoverRuleFiles, reportDiscovery } from "./discovery.js";
+import { describeError } from "./errors.js";
 import type { Logger } from "./logger.js";
 import { FileEvaluationError, FileEvaluationTimeoutError, evaluateFile } from "./registration.js";
 import type { RuleRegistry } from "./rule-registry.js";
@@ -75,7 +76,12 @@ export class RuleLoader {
       } else {
         log.error({ err, file }, `Bundling ${file} failed`);
       }
-      registry.fileFailed(file, error);
+      registry.fileFailed(
+        file,
+        error instanceof RuleSyntaxError
+          ? error
+          : new Error(`Bundling ${file} failed: ${describeError(err)}`),
+      );
       return false;
     }
 

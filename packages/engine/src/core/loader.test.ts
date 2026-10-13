@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { HttpServer } from "./http.js";
 import { RuleLoader } from "./loader.js";
 import { RuleRegistry } from "./rule-registry.js";
 import { coreSdkRuntime, installSdkRuntime } from "./sdk-runtime.js";
@@ -151,6 +152,54 @@ describe("RuleLoader", () => {
     expect(registry.listRules()).toEqual([
       expect.objectContaining({ id: "lights#motion", description: undefined }),
     ]);
+  });
+
+  it("keeps the error name in a rule's and a file's last error", async () => {
+    write(
+      "setup.ts",
+      [
+        'import { setup } from "@home-engine/sdk";',
+        "declare const foo: () => void;",
+        'setup("broken", () => {',
+        "  foo();",
+        "});",
+      ].join("\n"),
+    );
+    write("top.ts", "declare const foo: () => void;\nfoo();\n");
+    await loader.loadAll();
+    expect(registry.rule("setup#broken")).toMatchObject({
+      status: "failed",
+      lastError: "ReferenceError: foo is not defined",
+    });
+    expect(registry.listFiles().find((f) => f.file === "top.ts")?.error).toBe(
+      "Loading top.ts failed: ReferenceError: foo is not defined",
+    );
+
+    const server = new HttpServer(
+      8080,
+      {
+        backend: () => ({ connected: true, details: {} }),
+        initialLoadDone: () => true,
+        rules: () => registry.listRules(),
+        engine: () => ({ version: "0.0.0", watchMode: "disabled" }),
+      },
+      capture.log,
+      { host: "127.0.0.1", eventLoopLag: () => 0 },
+    );
+    const port = await server.start(0);
+    try {
+      const body = (await (await fetch(`http://127.0.0.1:${port}/rules`)).json()) as {
+        rules: Array<{ id: string; lastError?: string }>;
+      };
+      expect(body.rules).toContainEqual(
+        expect.objectContaining({
+          id: "setup#broken",
+          lastError: "ReferenceError: foo is not defined",
+        }),
+      );
+    } finally {
+      await server.stop();
+    }
   });
 
   it("logs an evaluation timeout as a warning naming the file", async () => {

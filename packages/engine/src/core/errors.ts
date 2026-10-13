@@ -12,3 +12,19 @@ export class FatalError extends Error {
     this.name = "FatalError";
   }
 }
+
+/**
+ * An error as shown in status output: `ReferenceError: foo is not defined`. The name is left
+ * out for a plain `Error` and when the message already starts with it; anything thrown that
+ * is not an Error is converted with String().
+ */
+export function describeError(err: unknown): string {
+  if (!(err instanceof Error)) {
+    return String(err);
+  }
+  const { name, message } = err;
+  if (!name || name === "Error" || message.startsWith(name)) {
+    return message;
+  }
+  return message ? `${name}: ${message}` : name;
+}

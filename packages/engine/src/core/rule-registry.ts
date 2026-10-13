@@ -2,6 +2,7 @@
 // Disable rules via configuration). Starts a file's rules after successful evaluation,
 // skips disabled ones, unloads them again, and reports status per rule and per file.
 
+import { describeError } from "./errors.js";
 import type { RuleDefinition } from "./registration.js";
 import type { RuleScopeImpl } from "./rule-scope.js";
 import { earliest, startRule, type RunnerOptions, type StartedRule } from "./rule-runner.js";
@@ -141,6 +142,7 @@ export class RuleRegistry {
       file,
       status: "failed",
       loadedAt: new Date(),
+      // The loader's file errors spell out the file and the cause (via describeError).
       error: error instanceof Error ? error.message : String(error),
     });
     this.rules.delete(file);
@@ -244,7 +246,7 @@ export class RuleRegistry {
       disabledBy: entry.disabledBy,
       loadedAt: entry.loadedAt,
       lastRunAt: scope?.lastRunAt,
-      lastError: (started?.error ?? scope?.lastError)?.message,
+      lastError: describeOptional(started?.error ?? scope?.lastError),
       triggerErrors: scope ? [...scope.triggerErrors.values()] : [],
       activeTriggers: active ? (scope?.armedTriggers.size ?? 0) : 0,
       scheduledTimers: active ? (scope?.activeTimers ?? 0) : 0,
@@ -279,4 +281,8 @@ export class RuleRegistry {
     }
     return undefined;
   }
+}
+
+function describeOptional(err: Error | undefined): string | undefined {
+  return err === undefined ? undefined : describeError(err);
 }
