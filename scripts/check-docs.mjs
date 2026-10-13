@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Type-checks the TypeScript samples in the documentation against the SDK types.
 //
-// Every ```ts / ```typescript block in README.md and docs/**/*.md is compiled as its own
+// Every ```ts / ```typescript block in README.md and docs/**/*.md (except the generated
+// docs/api/, docs/.vitepress/ and docs/node_modules/) is compiled as its own
 // module, with `@home-engine/sdk` resolved to packages/sdk/src, and linted with the ESLint
 // `curly` rule the code uses (every block gets braces). Errors are reported as
 // `file.md:line:column`. Mark a block that is intentionally incomplete with `ts nocheck`
@@ -24,6 +25,9 @@ function parseArgs(argv) {
   return { root: i >= 0 ? resolve(argv[i + 1]) : repo };
 }
 
+/** Directories under docs/ that hold generated pages, site configuration or dependencies. */
+const skippedDocsDirs = ["api", ".vitepress", "node_modules"];
+
 function markdownFiles(root) {
   const files = [];
   const readme = join(root, "README.md");
@@ -33,6 +37,10 @@ function markdownFiles(root) {
   const docs = join(root, "docs");
   if (existsSync(docs)) {
     for (const entry of readdirSync(docs, { recursive: true, withFileTypes: true })) {
+      const path = relative(docs, join(entry.parentPath, entry.name));
+      if (skippedDocsDirs.some((dir) => path === dir || path.startsWith(`${dir}/`))) {
+        continue;
+      }
       if (entry.isFile() && entry.name.endsWith(".md")) {
         files.push(join(entry.parentPath, entry.name));
       }

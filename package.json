@@ -7,7 +7,8 @@
     "packages/sdk",
     "packages/engine",
     "packages/typegen",
-    "examples"
+    "examples",
+    "docs"
   ],
   "engines": {
     "node": ">=24"
@@ -20,7 +21,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "docs:check": "node scripts/check-docs.mjs"
+    "docs:check": "node scripts/check-docs.mjs",
+    "docs:dev": "npm run docs:api && vitepress dev docs",
+    "docs:build": "npm run docs:api && vitepress build docs && node scripts/check-docs-links.mjs",
+    "docs:api": "typedoc --options docs/typedoc.config.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

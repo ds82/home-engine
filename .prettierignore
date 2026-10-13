@@ -3,3 +3,6 @@ dist
 coverage
 package-lock.json
 openspec
+docs/api
+docs/.vitepress/cache
+docs/.vitepress/dist

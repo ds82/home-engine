@@ -3,3 +3,6 @@ dist/
 coverage/
 *.tsbuildinfo
 .env
+docs/api/
+docs/.vitepress/cache/
+docs/.vitepress/dist/

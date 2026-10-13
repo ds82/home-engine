@@ -1,4 +1,5 @@
-// Keeps the environment variable table in README.md in sync with what the config code reads.
+// Keeps the environment variable table in docs/configuration.md in sync with what the config
+// code reads.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,28 +26,28 @@ function variablesReadByConfig(): string[] {
   return [...read].sort();
 }
 
-function variablesInReadme(): string[] {
-  const readme = readFileSync(
-    fileURLToPath(new URL("../../../README.md", import.meta.url)),
+function configurationGuide(): string {
+  return readFileSync(
+    fileURLToPath(new URL("../../../docs/configuration.md", import.meta.url)),
     "utf8",
   );
-  const section = readme.split(/^## Configuration$/m)[1]?.split(/^## /m)[0] ?? "";
-  return [...section.matchAll(/^\| `([A-Z][A-Z0-9_]*)` +\|/gm)].map((m) => m[1] ?? "").sort();
 }
 
-describe("README configuration table", () => {
+function variablesInGuide(): string[] {
+  return [...configurationGuide().matchAll(/^\| `([A-Z][A-Z0-9_]*)` +\|/gm)]
+    .map((m) => m[1] ?? "")
+    .sort();
+}
+
+describe("configuration guide table", () => {
   it("documents exactly the variables the config code reads", () => {
-    const documented = variablesInReadme();
+    const documented = variablesInGuide();
     expect(documented.length).toBeGreaterThan(0);
     expect(documented).toEqual(variablesReadByConfig());
   });
 
   it("gives every variable a default and a description", () => {
-    const readme = readFileSync(
-      fileURLToPath(new URL("../../../README.md", import.meta.url)),
-      "utf8",
-    );
-    const rows = readme.match(/^\| `[A-Z][A-Z0-9_]*` .*$/gm) ?? [];
+    const rows = configurationGuide().match(/^\| `[A-Z][A-Z0-9_]*` .*$/gm) ?? [];
     for (const row of rows) {
       const cells = row
         .split("|")

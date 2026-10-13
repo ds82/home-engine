@@ -90,4 +90,18 @@ describe("docs type-check script", () => {
     expect(result.code).toBe(0);
     expect(result.output).toContain("0 TypeScript block(s), 0 error(s)");
   });
+
+  it("skips the generated reference, the site configuration and dependencies", () => {
+    const broken = ["```ts", 'const n: number = "not a number";', "```"].join("\n");
+    const result = run(
+      fixture({
+        "docs/rules/triggers.md": good,
+        "docs/api/functions/rule.md": broken,
+        "docs/.vitepress/notes.md": broken,
+        "docs/node_modules/pkg/README.md": broken,
+      }),
+    );
+    expect(result.code).toBe(0);
+    expect(result.output).toContain("1 TypeScript block(s), 0 error(s)");
+  });
 });
