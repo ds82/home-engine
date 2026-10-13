@@ -39,6 +39,32 @@ jobs:
       - name: Docs samples
         run: npm run docs:check
 
+  docs:
+    runs-on: docker
+    container:
+      # Keep in sync with .nvmrc.
+      image: node:24
+    steps:
+      - name: Checkout
+        run: |
+          SERVER=$(echo "${{ github.server_url }}" | sed 's|https\?://||')
+          git clone --depth 1 --branch "${{ github.ref_name }}" \
+            "https://x-token:${{ secrets.GITHUB_TOKEN }}@$SERVER/${{ github.repository }}.git" .
+
+      - name: Install
+        run: npm ci
+
+      # TypeDoc reference with the documentation gate, VitePress build with the dead link
+      # check, then the anchor check.
+      - name: Build documentation site
+        run: npm run docs:build
+
+      - name: Upload documentation site
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site
+          path: docs/.vitepress/dist
+
   container:
     runs-on: docker
     container:
