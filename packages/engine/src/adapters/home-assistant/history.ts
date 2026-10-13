@@ -272,6 +272,38 @@ export function createHistory(
     (run?.scope.log ?? log)?.warn({ entity }, message);
   };
 
+  // Whether an entity is recorded at all, probed once per entity and rule (like the warning).
+  const recorded = new Map<string, boolean>();
+  /**
+   * True when the recorder has any state of `entity`. An empty query can also mean the range
+   * lies before the entity's first record; Home Assistant always returns the state in effect
+   * at the start for a recorded entity, so the last minute shows whether it is recorded.
+   */
+  async function isRecorded(entity: string): Promise<boolean> {
+    const key = `${currentRun()?.scope.ruleId ?? "-"}\0${entity}`;
+    const known = recorded.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const now = clock.now();
+    const probe = await recorder<Record<string, CompressedRow[] | undefined>>(
+      `history of ${entity}`,
+      {
+        type: "history/history_during_period",
+        start_time: new Date(now - 60_000).toISOString(),
+        end_time: new Date(now).toISOString(),
+        entity_ids: [entity],
+        include_start_time_state: true,
+        significant_changes_only: false,
+        minimal_response: true,
+        no_attributes: true,
+      },
+    );
+    const result = (probe[entity]?.length ?? 0) > 0;
+    recorded.set(key, result);
+    return result;
+  }
+
   /**
    * State changes of `entity` in [start, end), oldest first. The first entry is the state in
    * effect at `start` (if recorded), dated `start`. Rows that repeat the previous state
@@ -291,7 +323,7 @@ export function createHistory(
         no_attributes: true,
       },
     );
-    if (!result[entity]?.length) {
+    if (!result[entity]?.length && !(await isRecorded(entity))) {
       warnOnce(
         entity,
         `${entity} has no recorded history; it is unknown or excluded from the recorder`,

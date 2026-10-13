@@ -127,6 +127,25 @@ describe("statistics, changeSince and recorder errors", () => {
     expect(warnings.map((w) => w.source)).toEqual(["a#one", "b#two"]);
   });
 
+  it("does not warn when a query lies before a recorded entity's first record", async () => {
+    ha.setHistory("sensor.new", [
+      {
+        entity_id: "sensor.new",
+        state: "5",
+        attributes: {},
+        last_changed: new Date(MIDNIGHT + HOUR).toISOString(),
+        last_updated: new Date(MIDNIGHT + HOUR).toISOString(),
+        context: { id: "c", parent_id: null, user_id: null },
+      },
+    ]);
+    expect(await h.stateAt("sensor.new", new Date(MIDNIGHT - DAY))).toBeUndefined();
+    expect(
+      capture
+        .entries()
+        .filter((e) => e.level === "warn" && String(e.message).includes("sensor.new")),
+    ).toEqual([]);
+  });
+
   it("rejects with a clear error when Home Assistant has no recorder", async () => {
     for (const type of ["history/history_during_period", "recorder/statistics_during_period"]) {
       ha.onCommand(type, () => ({
