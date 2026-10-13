@@ -93,7 +93,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
   - the quick start through `docker compose` against the mock Home Assistant.
 
   Verify the script passes locally and the `container` CI job passes.
-- [ ] 10.3 Update `examples/README.md` with the image variable. Verify the quick start steps still work as written.
+- [x] 10.3 Update `examples/README.md` with the image variable. Verify the quick start steps still work as written.
 
 ## 11. Integration
 

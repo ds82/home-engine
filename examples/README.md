@@ -43,6 +43,16 @@ the `rules` folder itself contains nothing but rules.
 Edit a file in `rules/` and the engine reloads it within a second. `curl localhost:8080/rules`
 lists every rule with its status.
 
+To run another image, such as one you built yourself or a pinned version, set
+`HOME_ENGINE_IMAGE` in `.env` (default `ghcr.io/home-engine/home-engine:latest`):
+
+```sh
+HOME_ENGINE_IMAGE=home-engine:local
+```
+
+`scripts/container-smoke.sh` runs this quick start against a mock Home Assistant with the image
+it builds.
+
 ## Verified quick start
 
 Run on 2026-10-11 against Home Assistant 2026.6.0 in a container
