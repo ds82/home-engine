@@ -1,6 +1,6 @@
 import type { StateTrigger } from "@home-engine/sdk";
 import { setTimeout as sleep } from "node:timers/promises";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { RuleDefinition } from "./registration.js";
 import { RuleRegistry, matchesRulePattern } from "./rule-registry.js";
 import { listen } from "./rule-runner.js";
@@ -176,14 +176,14 @@ describe("RuleRegistry", () => {
       },
       def("counter.ts", "after"),
     ]);
-    await sleep(5);
-    expect(reg.rule("counter#count")).toMatchObject({ status: "starting", activeTriggers: 1 });
+    await vi.waitFor(() =>
+      expect(reg.rule("counter#count")).toMatchObject({ status: "starting", activeTriggers: 1 }),
+    );
     expect(reg.summary()).toEqual({ loaded: 1, disabled: 0, failed: 0 });
 
     // The listener registered before the await already fires.
     fake.change("binary_sensor.motion");
-    await sleep(5);
-    expect(heard).toEqual(["motion"]);
+    await vi.waitFor(() => expect(heard).toEqual(["motion"]));
 
     release();
     await loading;

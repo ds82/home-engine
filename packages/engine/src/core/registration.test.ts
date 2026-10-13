@@ -105,22 +105,27 @@ describe("rule registration", () => {
 
   it("rejects a timed-out file's late registration while the next file is evaluated", async () => {
     let lateError: unknown;
+    let resume: () => void = () => {};
+    let lateCallDone: () => void = () => {};
+    const lateCall = new Promise<void>((r) => (lateCallDone = r));
     const slow = evaluateFile(
       "slow.ts",
       async () => {
-        await new Promise((r) => setTimeout(r, 40));
+        await new Promise<void>((r) => (resume = r)); // e.g. a slow network call
         try {
           registerTriggeredRule("late", motion, noop);
         } catch (e) {
           lateError = e;
         }
+        lateCallDone();
       },
       { timeoutMs: 10 },
     ).catch((e: unknown) => e);
     expect(await slow).toBeInstanceOf(FileEvaluationError);
     const next = await evaluateFile("next.ts", async () => {
       registerTriggeredRule("own", motion, noop);
-      await new Promise((r) => setTimeout(r, 60)); // the slow file's late call happens now
+      resume(); // the slow file's late call happens now
+      await lateCall;
     });
     expect(next.map((r) => r.id)).toEqual(["next#own"]);
     expect(lateError).toBeInstanceOf(RegistrationError);

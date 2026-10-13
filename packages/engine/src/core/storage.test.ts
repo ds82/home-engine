@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RuleScopeImpl } from "./rule-scope.js";
 import { invoke } from "./run-context.js";
 import {
@@ -195,7 +195,8 @@ describe("rule storage", () => {
     storage.namespace("a#one").set("count", 3);
     await storage.flush();
     expect(existsSync(fileOf("a#one"))).toBe(false);
-    await new Promise((r) => setTimeout(r, 60)); // retries after 10 ms and 20 ms
+    // Retries after 10 ms and 20 ms.
+    await vi.waitFor(() => expect(existsSync(fileOf("a#one"))).toBe(true), { timeout: 5_000 });
     expect(attempts).toBe(3);
     expect(JSON.parse(readFileSync(fileOf("a#one"), "utf8"))).toMatchObject({
       values: { count: 3 },
