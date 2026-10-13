@@ -36,8 +36,8 @@
 
 ## 5. CI
 
-- [ ] 5.1 Add a `docs` job to `.forgejo/workflows/ci.yml` (`node:24`, manual clone like the other jobs, `npm ci`, `npm run docs:build`, upload `docs/.vitepress/dist` as artifact `docs-site` with `actions/upload-artifact@v4`, falling back to `@v3`). Verify on a pushed branch that the job is green and the artifact downloads and opens in a browser after extraction.
-- [ ] 5.2 Push a commit with a deliberately broken guide link on a scratch branch. Verify the `docs` job fails, then delete the branch.
+- [x] 5.1 Add a `docs` job to `.forgejo/workflows/ci.yml` (`node:24`, manual clone like the other jobs, `npm ci`, `npm run docs:build`, upload `docs/.vitepress/dist` as artifact `docs-site` with `actions/upload-artifact@v4`, falling back to `@v3`). Verify on a pushed branch that the job is green and the artifact downloads and opens in a browser after extraction.
+- [x] 5.2 Push a commit with a deliberately broken guide link on a scratch branch. Verify the `docs` job fails, then delete the branch.
 
 ## 6. Contributor documentation
 

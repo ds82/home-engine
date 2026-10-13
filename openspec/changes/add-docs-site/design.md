@@ -106,7 +106,7 @@ A new `docs` job in `.forgejo/workflows/ci.yml`:
 - runs in a `node:24` container;
 - clones the repository the same way the existing jobs do;
 - runs `npm ci` and `npm run docs:build`;
-- uploads `docs/.vitepress/dist` with `actions/upload-artifact@v4` as artifact `docs-site`. Forgejo 16 supports the v4 artifact protocol; if the runner cannot resolve the action, fall back to `@v3`.
+- uploads `docs/.vitepress/dist` with `actions/upload-artifact@v3` as artifact `docs-site`. v4 fails on Forgejo 16 with `GHESNotSupportedError`, because it only supports github.com; after the move to GitHub the job can use v4.
 
 The job runs alongside `check` and is independent of the Docker jobs. When the repository moves to GitHub, it ports to `.github/workflows` almost unchanged, and the Pages deploy builds on it.
 
