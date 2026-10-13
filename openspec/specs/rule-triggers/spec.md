@@ -303,3 +303,7 @@ The SDK SHALL provide a free function `listen(trigger | triggers, callback, opti
 #### Scenario: Cancel a single listener
 - **WHEN** a setup rule cancels one listener handle
 - **THEN** that callback is no longer invoked while the rule's other listeners stay active
+
+#### Scenario: Duplicate listener ID
+- **WHEN** a setup function calls `listen(…, { id: "a-on" })` twice
+- **THEN** the second call throws an error naming the duplicate ID, and the first listener stays registered

@@ -47,6 +47,10 @@ Rules SHALL be registered by calling the SDK function `rule()` (triggered rule) 
 - **WHEN** rule code calls `rule()` or `setup()` later, for example inside a trigger callback
 - **THEN** the call throws an error stating that rules can only be registered while their file is loaded, and no rule is registered
 
+#### Scenario: Registration from a running rule while another file loads
+- **WHEN** a trigger callback of a rule in `lights.ts` calls `rule()` while `porch.ts` is being evaluated during a hot reload
+- **THEN** the call throws the same error, and no rule is added to `porch.ts` or `lights.ts`
+
 ### Requirement: Triggered rule form
 `rule(name, triggers, body, options?)` SHALL register a rule that runs `body` whenever any trigger in the `triggers` list fires (logical OR). `triggers` is a single trigger or an array of triggers (see rule-triggers and rule-scheduler). `options` MAY set `description`, `enabled` (default `true`), `id` (see Rule identity) and the concurrency `mode`.
 
@@ -80,9 +84,13 @@ By default, each rule SHALL have the ID `<path relative to rules dir without ext
 - **WHEN** `lights.ts` registers `rule("motion", …, { id: "kitchen-motion" })` and the file is moved to `rooms/kitchen/lights.ts`
 - **THEN** the rule keeps the ID `kitchen-motion` and reads the values it stored before the move
 
+#### Scenario: File with an explicit ID moved while the engine runs
+- **WHEN** `rooms/kitchen.ts` registers a rule with `id: "kitchen-motion"` and is moved to `a/kitchen.ts` while hot reload is active
+- **THEN** the old file's rules are unloaded before the moved file is loaded, so the rule runs from `a/kitchen.ts` without an ID collision
+
 #### Scenario: Explicit ID collision
 - **WHEN** two files both declare a rule with `id: "kitchen-motion"`
-- **THEN** the file loaded second fails to load with an error naming both files, and the rule from the file loaded first keeps running
+- **THEN** the file loaded second fails to load with an error naming both files, the error is logged, and the rule from the file loaded first keeps running
 
 #### Scenario: ID of nested rule
 - **WHEN** `lights/hallway.ts` registers a rule named `motion`
@@ -90,11 +98,15 @@ By default, each rule SHALL have the ID `<path relative to rules dir without ext
 
 #### Scenario: Duplicate name in one file
 - **WHEN** a file registers two rules named `motion`
-- **THEN** the first registration is kept, the second throws an error naming the duplicate, and the error is logged with the file path
+- **THEN** the second `rule()` call throws an error naming the duplicate; unless the file catches it, the file fails to load as a whole (see rule-lifecycle: File evaluation is atomic) and the error is logged with the file path
 
 #### Scenario: Conflicting extensions
 - **WHEN** both `hallway.ts` and `hallway.js` exist in the same directory
 - **THEN** the engine logs an error naming both files and loads neither, because their rule IDs would collide
+
+#### Scenario: Conflicting file added while the engine runs
+- **WHEN** `hallway.ts` is loaded and the user adds `hallway.js` next to it while hot reload is active
+- **THEN** the engine logs an error naming both files and unloads the rules of `hallway.ts`, so neither file runs until one of them is removed
 
 ### Requirement: SDK module with free functions
 The SDK SHALL expose rule registration, trigger constructors, listener registration, state helpers and write functions as named free functions importable from one module, so rule files need a single import. The engine SHALL attribute every free-function call to the rule (or, during file evaluation, the file) in whose execution it happens, without the user passing a context.
