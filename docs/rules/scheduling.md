@@ -151,5 +151,13 @@ On the days the clocks change:
 - **No catch-up:** a schedule that was due while the engine was not running is not run late. If
   the engine is down at 07:00, `daily("07:00")` next runs tomorrow at 07:00. (Held states of
   `onChange(…, { for })` are different: those are restored; see [triggers](triggers.md).)
+- **Suspend counts as down:** the same holds when the host sleeps. A run of `daily`, `cron`,
+  `every` or `sun` that would start more than a minute late is skipped, not replayed, and
+  logged at `debug` level (`Skipped daily("07:00") run planned for …`). Suspended from Monday
+  06:00 to Thursday 05:00, `daily("07:00")` next runs on Thursday at 07:00, and `every("1m")`
+  continues at the next minute of its grid. A run up to a minute late, for example because a
+  long-running rule kept the engine busy, still runs. `sleep` and `after` are different: they
+  wait for a duration, so after a suspend they finish as soon as the engine notices it has
+  passed.
 - **Next run:** the rule status shows when each time trigger fires next. Handles returned by
   `after` and by `listen()` for time triggers expose `nextRun` as well.
