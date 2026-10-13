@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -7,8 +7,9 @@ import { HotReloader, type ReloadSummary } from "./hot-reload.js";
 import { RuleLoader } from "./loader.js";
 import { RuleRegistry } from "./rule-registry.js";
 import { coreSdkRuntime, installSdkRuntime } from "./sdk-runtime.js";
+import { Storage } from "./storage.js";
 import { FakeSources } from "./testing/fake-sources.js";
-import { logCapture } from "./testing/log-capture.js";
+import { logCapture, type LogCapture } from "./testing/log-capture.js";
 
 const ruleFile = (...names: string[]): string =>
   `import { rule } from "@home-engine/sdk";\n${names
@@ -21,6 +22,7 @@ describe("HotReloader", () => {
   let registry: RuleRegistry;
   let loader: RuleLoader;
   let reloader: HotReloader;
+  let capture: LogCapture;
 
   beforeAll(() => installSdkRuntime(coreSdkRuntime()));
 
@@ -28,7 +30,8 @@ describe("HotReloader", () => {
     root = mkdtempSync(join(tmpdir(), "he-reload-"));
     rulesDir = join(root, "rules");
     mkdirSync(rulesDir);
-    const log = logCapture([]).log;
+    capture = logCapture([]);
+    const log = capture.log;
     registry = new RuleRegistry({ sources: new FakeSources().sources, log });
     loader = new RuleLoader({ rulesDir, buildDir: join(root, "data", ".build"), registry, log });
     reloader = new HotReloader({ rulesDir, loader, log, debounceMs: 100 });
@@ -100,6 +103,57 @@ describe("HotReloader", () => {
     write("rooms/kitchen.ts", ruleFile("motion"));
     expect(await reload).toEqual({ reloaded: ["rooms/kitchen.ts"], unloaded: [] });
     expect(ids()).toEqual(["climate#heating", "rooms/kitchen#motion"]);
+  });
+
+  it("keeps a rule with an explicit ID and its stored values when its file moves", async () => {
+    const storage = new Storage(join(root, "data", "storage"), capture.log);
+    await storage.load();
+    installSdkRuntime(coreSdkRuntime(undefined, storage));
+    try {
+      write(
+        "rooms/kitchen.ts",
+        [
+          'import { setup, store } from "@home-engine/sdk";',
+          'setup("counter", () => {',
+          '  store.set("starts", (store.get<number>("starts") ?? 0) + 1);',
+          '}, { id: "kitchen" });',
+        ].join("\n"),
+      );
+      await start();
+      expect(storage.namespace("kitchen").get("starts")).toBe(1);
+
+      // Moved to a path that sorts before the old one, in one batch.
+      const reload = nextReload();
+      mkdirSync(join(rulesDir, "a"));
+      renameSync(join(rulesDir, "rooms", "kitchen.ts"), join(rulesDir, "a", "kitchen.ts"));
+      expect(await reload).toEqual({ reloaded: ["a/kitchen.ts"], unloaded: ["rooms/kitchen.ts"] });
+      expect(registry.rule("kitchen")).toMatchObject({ file: "a/kitchen.ts", status: "running" });
+      expect(storage.namespace("kitchen").get("starts")).toBe(2);
+    } finally {
+      installSdkRuntime(coreSdkRuntime());
+    }
+  });
+
+  it("applies the .ts/.js conflict rule when a conflicting file appears or goes away", async () => {
+    write("hallway.ts", ruleFile("motion"));
+    await start();
+    expect(ids()).toEqual(["hallway#motion"]);
+
+    let reload = nextReload();
+    write("hallway.js", ruleFile("motion"));
+    expect(await reload).toEqual({ reloaded: [], unloaded: ["hallway.ts"] });
+    expect(ids()).toEqual([]);
+    expect(capture.entries()).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        message: expect.stringMatching(/hallway\.js.*hallway\.ts|hallway\.ts.*hallway\.js/),
+      }),
+    );
+
+    reload = nextReload();
+    unlinkSync(join(rulesDir, "hallway.js"));
+    expect(await reload).toEqual({ reloaded: ["hallway.ts"], unloaded: [] });
+    expect(ids()).toEqual(["hallway#motion"]);
   });
 
   it("reloads every rule file that imports a changed helper, directly or indirectly", async () => {

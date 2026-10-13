@@ -2,7 +2,8 @@
 // directory, collects file events for a short quiet period (so an editor's burst of writes
 // causes one reload), then works out which rule files are affected: changed rule files plus
 // every rule file whose bundle includes a changed helper (from the bundles' metafiles).
-// Affected files are unloaded and loaded again; deleted ones are only unloaded.
+// Deleted and newly conflicting files are unloaded first, then the affected valid files are
+// loaded (again), so a file moved to another path keeps its explicit rule IDs.
 
 import { EventEmitter } from "node:events";
 import { relative, resolve, sep } from "node:path";
@@ -11,6 +12,7 @@ import type { WatchPollMode } from "./config.js";
 import { discoverRuleFiles, reportDiscovery } from "./discovery.js";
 import type { RuleLoader } from "./loader.js";
 import type { Logger } from "./logger.js";
+import { fileIdBase } from "./registration.js";
 
 export const DEBOUNCE_MS = 200;
 /** Polling interval; changes are detected within about this time plus the debounce. */
@@ -197,19 +199,37 @@ export class HotReloader {
 
       const discovery = await discoverRuleFiles(this.rulesDir);
       const valid = new Set(discovery.files);
+      // A file whose .ts/.js twin appeared or went away is affected too: the whole conflict
+      // group is unloaded, and a file that was blocked by a removed twin loads again.
+      const bases = new Set([...affected].map(fileIdBase));
       const conflicting = discovery.conflicts.filter((c) => c.files.some((f) => affected.has(f)));
+      for (const conflict of conflicting) {
+        for (const file of conflict.files) {
+          affected.add(file);
+        }
+      }
+      for (const file of valid) {
+        if (bases.has(fileIdBase(file)) && !loader.isLoaded(file)) {
+          affected.add(file);
+        }
+      }
       if (conflicting.length > 0) {
         reportDiscovery(log, this.rulesDir, { files: [], conflicts: conflicting });
       }
 
+      // Unloads first, so a moved file's rule IDs are free before the new path loads.
       const summary: ReloadSummary = { reloaded: [], unloaded: [] };
-      for (const file of [...affected].sort()) {
+      const sorted = [...affected].sort();
+      for (const file of sorted) {
+        if (!valid.has(file) && loader.isLoaded(file)) {
+          await loader.unloadFile(file);
+          summary.unloaded.push(file);
+        }
+      }
+      for (const file of sorted) {
         if (valid.has(file)) {
           await loader.loadFile(file);
           summary.reloaded.push(file);
-        } else if (loader.isLoaded(file)) {
-          await loader.unloadFile(file);
-          summary.unloaded.push(file);
         }
       }
       if (summary.reloaded.length + summary.unloaded.length > 0) {
