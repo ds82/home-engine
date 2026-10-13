@@ -12,7 +12,14 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RuleScopeImpl } from "./rule-scope.js";
 import { invoke } from "./run-context.js";
-import { checkJson, namespaceFile, Storage, storageSdk } from "./storage.js";
+import {
+  checkJson,
+  namespaceFile,
+  Storage,
+  storageSdk,
+  syncDirectory,
+  writeAtomically,
+} from "./storage.js";
 import { logCapture, type LogCapture } from "./testing/log-capture.js";
 
 describe("rule storage", () => {
@@ -170,6 +177,86 @@ describe("rule storage", () => {
           "Storage file a%23one.json is corrupted; moved it aside and starting with an empty store",
       }),
     );
+  });
+
+  it("retries a failed write with backoff and keeps the value", async () => {
+    let attempts = 0;
+    const storage = new Storage(dir, capture.log, {
+      retryBaseMs: 10,
+      io: {
+        writeAtomically: async (file, text) => {
+          if (++attempts <= 2) {
+            throw Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
+          }
+          await writeAtomically(file, text);
+        },
+      },
+    });
+    storage.namespace("a#one").set("count", 3);
+    await storage.flush();
+    expect(existsSync(fileOf("a#one"))).toBe(false);
+    await new Promise((r) => setTimeout(r, 60)); // retries after 10 ms and 20 ms
+    expect(attempts).toBe(3);
+    expect(JSON.parse(readFileSync(fileOf("a#one"), "utf8"))).toMatchObject({
+      values: { count: 3 },
+    });
+    expect(
+      capture.entries().filter((e) => e.message === "Writing a storage file failed; will retry"),
+    ).toHaveLength(2);
+    expect(storage.namespace("a#one").get("count")).toBe(3);
+  });
+
+  it("makes a final attempt for a failed write when flushed on shutdown", async () => {
+    let fail = true;
+    const storage = new Storage(dir, capture.log, {
+      retryBaseMs: 60_000,
+      io: {
+        writeAtomically: async (file, text) => {
+          if (fail) {
+            throw new Error("read-only file system");
+          }
+          await writeAtomically(file, text);
+        },
+      },
+    });
+    storage.namespace("a#one").set("count", 1);
+    await storage.flush();
+    fail = false;
+    await storage.flush(); // shutdown
+    expect(JSON.parse(readFileSync(fileOf("a#one"), "utf8")).values).toEqual({ count: 1 });
+  });
+
+  it("syncs the storage directory after renaming a file into it", async () => {
+    mkdirSync(dir, { recursive: true });
+    const synced: Array<[string, boolean]> = [];
+    await writeAtomically(fileOf("a#one"), "{}\n", async (d) => {
+      synced.push([d, existsSync(fileOf("a#one"))]);
+      await syncDirectory(d);
+    });
+    expect(synced).toEqual([[dir, true]]); // after the rename
+    expect(readdirSync(dir)).toEqual([namespaceFile("a#one")]);
+  });
+
+  it("skips unexpected names and corrupt files that cannot be moved aside", async () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "%E0%A4%A.json"), "{}");
+    writeFileSync(fileOf("a#one"), "{ not json");
+    writeFileSync(fileOf("b#two"), JSON.stringify({ version: 1, values: { ok: true } }));
+    const storage = new Storage(dir, capture.log, {
+      io: {
+        rename: () => Promise.reject(new Error("EACCES: permission denied")),
+      },
+    });
+    await storage.load();
+    expect(storage.namespace("b#two").get("ok")).toBe(true);
+    expect(storage.namespace("a#one").keys()).toEqual([]);
+    expect(readFileSync(fileOf("a#one"), "utf8")).toBe("{ not json"); // not overwritten
+    const levels = capture.entries().map((e) => [e.level, String(e.message)]);
+    expect(levels).toContainEqual(["warn", "Skipping %E0%A4%A.json in the storage directory"]);
+    expect(levels).toContainEqual([
+      "error",
+      `Storage file ${namespaceFile("a#one")} is corrupted and could not be moved aside; starting with an empty store`,
+    ]);
   });
 
   it("never maps a rule ID onto the shared file or outside the directory", () => {

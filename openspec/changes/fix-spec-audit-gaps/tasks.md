@@ -64,9 +64,9 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 8. Storage (rule-storage)
 
-- [ ] 8.1 On a failed flush, mark the namespace dirty again and retry with backoff, with a final attempt on shutdown (design decision 12). Verify a test with an injected write failure that later succeeds and keeps the value.
-- [ ] 8.2 `fsync` the storage directory after the rename, ignoring unsupported file systems. Verify the storage tests pass and a test spies on the directory sync.
-- [ ] 8.3 Handle each storage file inside its own `try` when loading, and skip unexpected names and corrupt files that cannot be moved aside. Verify tests where a file named `%E0%A4%A.json` and a corrupt file with a failing rename do not stop startup.
+- [x] 8.1 On a failed flush, mark the namespace dirty again and retry with backoff, with a final attempt on shutdown (design decision 12). Verify a test with an injected write failure that later succeeds and keeps the value.
+- [x] 8.2 `fsync` the storage directory after the rename, ignoring unsupported file systems. Verify the storage tests pass and a test spies on the directory sync.
+- [x] 8.3 Handle each storage file inside its own `try` when loading, and skip unexpected names and corrupt files that cannot be moved aside. Verify tests where a file named `%E0%A4%A.json` and a corrupt file with a failing rename do not stop startup.
 - [ ] 8.4 Add the orphaned-data test: delete a rule file, check the stored file stays, restore the rule file, and read the old values again. Verify it passes.
 
 ## 9. Tests for behaviour that is already correct

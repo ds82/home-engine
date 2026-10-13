@@ -5,8 +5,8 @@
 // no longer exist are kept, so renaming or removing a rule for a while loses nothing.
 
 import { existsSync } from "node:fs";
-import { mkdir, open, readdir, readFile, rename } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, open, readdir, readFile, rename, type FileHandle } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { Logger } from "./logger.js";
 import { requireRun } from "./run-context.js";
 
@@ -72,9 +72,22 @@ export function checkJson(value: unknown, fn: string, path = "value", seen = new
 
 const copy = <T>(value: T): T => (value === undefined ? value : structuredClone(value));
 
+/** First delay before retrying a failed write; it doubles up to RETRY_MAX_MS. */
+export const RETRY_BASE_MS = 500;
+export const RETRY_MAX_MS = 30_000;
+
+/** The file operations storage uses; injectable for tests. */
+export interface StorageIo {
+  /** Writes `text` to `file` so that a crash leaves either the old or the new content. */
+  writeAtomically(file: string, text: string): Promise<void>;
+  rename(from: string, to: string): Promise<void>;
+}
+
 export interface StorageOptions {
   flushDelayMs?: number;
+  retryBaseMs?: number;
   now?: () => number;
+  io?: Partial<StorageIo>;
 }
 
 export class Storage {
@@ -83,7 +96,11 @@ export class Storage {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private writing: Promise<void> = Promise.resolve();
   private readonly flushDelayMs: number;
+  private readonly retryBaseMs: number;
   private readonly now: () => number;
+  private readonly io: StorageIo;
+  /** Consecutive flushes with a failed write, for the retry backoff. */
+  private failures = 0;
 
   /** `dir` is `<DATA_DIR>/storage`. */
   constructor(
@@ -92,10 +109,20 @@ export class Storage {
     options: StorageOptions = {},
   ) {
     this.flushDelayMs = options.flushDelayMs ?? FLUSH_DELAY_MS;
+    this.retryBaseMs = options.retryBaseMs ?? RETRY_BASE_MS;
     this.now = options.now ?? Date.now;
+    this.io = {
+      writeAtomically: (file, text) => writeAtomically(file, text),
+      rename,
+      ...options.io,
+    };
   }
 
-  /** Reads every namespace file. Unreadable files are moved aside and start empty. */
+  /**
+   * Reads every namespace file. Each file is handled on its own: a name that is not a
+   * namespace file is skipped with a warning, and an unreadable file is moved aside (or, if
+   * that fails, left in place and skipped) so its namespace starts empty.
+   */
   async load(): Promise<void> {
     if (!existsSync(this.dir)) {
       return;
@@ -104,26 +131,45 @@ export class Storage {
       if (!name.endsWith(".json")) {
         continue;
       }
-      const namespace =
-        name === `${SHARED_NAMESPACE}.json`
-          ? SHARED_NAMESPACE
-          : decodeURIComponent(name.slice(0, -".json".length));
-      const file = join(this.dir, name);
+      let namespace: string;
       try {
-        const data = JSON.parse(await readFile(file, "utf8")) as unknown;
-        const values = (data as { values?: unknown } | null)?.values;
-        if (typeof values !== "object" || values === null || Array.isArray(values)) {
-          throw new Error("no values object");
-        }
-        this.namespaces.set(namespace, new Map(Object.entries(values)));
-      } catch (err) {
-        const aside = `${file}.corrupt-${new Date(this.now()).toISOString().replace(/[:.]/g, "-")}`;
-        await rename(file, aside);
-        this.log.error(
-          { err, file, movedTo: aside },
-          `Storage file ${name} is corrupted; moved it aside and starting with an empty store`,
-        );
+        namespace =
+          name === `${SHARED_NAMESPACE}.json`
+            ? SHARED_NAMESPACE
+            : decodeURIComponent(name.slice(0, -".json".length));
+      } catch {
+        this.log.warn({ file: join(this.dir, name) }, `Skipping ${name} in the storage directory`);
+        continue;
       }
+      await this.loadFile(name, namespace);
+    }
+  }
+
+  private async loadFile(name: string, namespace: string): Promise<void> {
+    const file = join(this.dir, name);
+    try {
+      const data = JSON.parse(await readFile(file, "utf8")) as unknown;
+      const values = (data as { values?: unknown } | null)?.values;
+      if (typeof values !== "object" || values === null || Array.isArray(values)) {
+        throw new Error("no values object");
+      }
+      this.namespaces.set(namespace, new Map(Object.entries(values)));
+    } catch (err) {
+      const aside = `${file}.corrupt-${new Date(this.now()).toISOString().replace(/[:.]/g, "-")}`;
+      try {
+        await this.io.rename(file, aside);
+      } catch (renameErr) {
+        // Left in place: nothing overwrites it until the namespace is written to.
+        this.log.error(
+          { err, renameErr, file },
+          `Storage file ${name} is corrupted and could not be moved aside; starting with an empty store`,
+        );
+        return;
+      }
+      this.log.error(
+        { err, file, movedTo: aside },
+        `Storage file ${name} is corrupted; moved it aside and starting with an empty store`,
+      );
     }
   }
 
@@ -162,7 +208,10 @@ export class Storage {
     };
   }
 
-  /** Writes all pending changes now; resolves when they are on disk. */
+  /**
+   * Writes all pending changes now; resolves when the attempt is over. A namespace whose
+   * write failed stays pending and is retried with backoff; shutdown flushes once more.
+   */
   flush(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
@@ -171,6 +220,7 @@ export class Storage {
     const pending = [...this.dirty];
     this.dirty.clear();
     const snapshots = pending.map((namespace) => ({
+      namespace,
       file: join(this.dir, namespaceFile(namespace)),
       text: `${JSON.stringify(
         { version: FILE_VERSION, values: Object.fromEntries(this.namespaces.get(namespace) ?? []) },
@@ -182,14 +232,31 @@ export class Storage {
       if (snapshots.length === 0) {
         return;
       }
-      await mkdir(this.dir, { recursive: true });
-      for (const { file, text } of snapshots) {
+      let failed = false;
+      try {
+        await mkdir(this.dir, { recursive: true });
+      } catch (err) {
+        this.log.error({ err, dir: this.dir }, "Creating the storage directory failed");
+      }
+      for (const { namespace, file, text } of snapshots) {
         try {
-          await writeAtomically(file, text);
+          await this.io.writeAtomically(file, text);
         } catch (err) {
-          this.log.error({ err, file }, "Writing a storage file failed");
+          failed = true;
+          // A later change already marked it dirty again, or this retries the same snapshot.
+          this.dirty.add(namespace);
+          this.log.error({ err, file }, "Writing a storage file failed; will retry");
         }
       }
+      if (!failed) {
+        this.failures = 0;
+        return;
+      }
+      this.failures++;
+      const delay = Math.min(this.retryBaseMs * 2 ** (this.failures - 1), RETRY_MAX_MS);
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => void this.flush(), delay);
+      this.timer.unref?.(); // never keeps a stopping engine alive
     });
     return this.writing;
   }
@@ -200,8 +267,15 @@ export class Storage {
   }
 }
 
-/** Writes `text` to `file` so that a crash leaves either the old or the new content. */
-async function writeAtomically(file: string, text: string): Promise<void> {
+/**
+ * Writes `text` to `file` so that a crash leaves either the old or the new content: tmp file
+ * → fsync → rename → fsync of the directory, so the rename itself survives a power loss.
+ */
+export async function writeAtomically(
+  file: string,
+  text: string,
+  syncDir: (dir: string) => Promise<void> = syncDirectory,
+): Promise<void> {
   const tmp = `${file}.tmp`;
   const handle = await open(tmp, "w");
   try {
@@ -211,6 +285,23 @@ async function writeAtomically(file: string, text: string): Promise<void> {
     await handle.close();
   }
   await rename(tmp, file);
+  await syncDir(dirname(file));
+}
+
+/** fsyncs a directory; file systems and platforms that cannot are ignored. */
+export async function syncDirectory(dir: string): Promise<void> {
+  let handle: FileHandle | undefined;
+  try {
+    handle = await open(dir, "r");
+    await handle.sync();
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "EISDIR" && code !== "EINVAL" && code !== "EPERM") {
+      throw err;
+    }
+  } finally {
+    await handle?.close();
+  }
 }
 
 /** The SDK's `store` (per calling rule) and `shared` objects. */
