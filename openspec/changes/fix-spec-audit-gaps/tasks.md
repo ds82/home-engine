@@ -51,7 +51,7 @@ Group 1 is merged to `main` on its own once CI is green, before the other groups
 
 ## 7. History (ha-history)
 
-- [ ] 7.1 Check Home Assistant's reset detection for `total_increasing` (the 10 % threshold and the handling of smaller dips) in its recorder code, and correct the "Small dip" scenario and design decision 9 if they differ. Verify by citing the source lines in the commit message.
+- [x] 7.1 Check Home Assistant's reset detection for `total_increasing` (the 10 % threshold and the handling of smaller dips) in its recorder code, and correct the "Small dip" scenario and design decision 9 if they differ. Verify by citing the source lines in the commit message.
 - [ ] 7.2 Compute `changeSince` from state history within the recorder's retention (start state included, `unavailable`/`unknown` skipped, resets detected as in 7.1, `total` `last_reset` changes as resets), and fall back to statistics before it (design decision 9). Verify tests for:
   - a range starting at 12:34;
   - a 10-minute range;

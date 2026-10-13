@@ -92,14 +92,15 @@ Rule-specific engine messages (`Rule started`, `Rule stopped`, setup failure, se
 
 Within the recorder's retention, `changeSince` now uses state history instead of hourly statistics:
 - It fetches the numeric states over `[since, until]`, including the state at `since`.
-- It skips `unavailable` and `unknown` states.
-- It sums the increases between consecutive values.
+- It skips `unavailable`, `unknown` and non-numeric states, and negative values of `total_increasing` sensors, as Home Assistant does.
+- It splits the states into cycles and adds up, per cycle, the last value minus the cycle's start. Dips inside a cycle therefore only count through the net change: 1000.0 → 999.9 → 1000.2 is 0.2.
 
-Resets follow Home Assistant's statistics exactly, so `changeSince` agrees with the Energy dashboard:
-- For `total_increasing`, only a drop of more than 10 % starts a new cycle, and the new value then counts as the increase from 0. A smaller dip is not a reset and is counted as Home Assistant counts it.
-- For `total`, a change of the `last_reset` attribute starts a new cycle.
+Cycles follow Home Assistant's statistics (`homeassistant/components/sensor/recorder.py` at `2db9ed1`, `reset_detected` and the sum loop in `compile_statistics`), so `changeSince` agrees with the Energy dashboard:
+- For `total_increasing`, a value below 90 % of the previous one starts a new cycle. A smaller dip only makes Home Assistant log a warning; it is not a reset.
+- For `total`, a change of the `last_reset` attribute starts a new cycle. Without `last_reset` the sensor is one cycle, so its change may be negative.
+- A new cycle counts from 0, so the first value after a reset counts in full: 50.0 → 52.0 → 0.0 → 1.5 is 2.0 + 1.5 = 3.5.
 
-The 10 % threshold and the handling of small dips are taken from Home Assistant's recorder code (`homeassistant/components/sensor/recorder.py`) and verified there during implementation. If Home Assistant's handling differs from the "Small dip" scenario, the scenario is corrected to match Home Assistant.
+The state class comes from the entity's current state. A sensor without one is treated like `total_increasing`.
 
 Before the retention window, it falls back to hourly `change` statistics as today, with the partial-hour limitation documented. That is the same split `averageSince` already uses.
 
