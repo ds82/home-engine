@@ -11,7 +11,7 @@
     }
   },
   "bin": {
-    "home-engine-typegen": "./dist/cli.js"
+    "home-engine-typegen": "dist/cli.js"
   },
   "files": [
     "dist"

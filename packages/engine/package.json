@@ -15,7 +15,7 @@
     }
   },
   "bin": {
-    "home-engine": "./dist/cli.js"
+    "home-engine": "dist/cli.js"
   },
   "files": [
     "dist"
