@@ -7,6 +7,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@home-engine/sdk": "0.0.0"
+    "@home-engine/sdk": "1.0.0-alpha.1"
   }
 }

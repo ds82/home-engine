@@ -1,6 +1,6 @@
 {
   "name": "@home-engine/typegen",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.1",
   "description": "Generates entity and service typings for home-engine rules from a live Home Assistant",
   "license": "MIT",
   "type": "module",
@@ -24,9 +24,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@home-engine/sdk": "0.0.0"
+    "@home-engine/sdk": "1.0.0-alpha.1"
   },
   "devDependencies": {
-    "@home-engine/engine": "0.0.0"
+    "@home-engine/engine": "1.0.0-alpha.1"
   }
 }

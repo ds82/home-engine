@@ -1,6 +1,6 @@
 {
   "name": "@home-engine/engine",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.1",
   "description": "Rule engine that runs TypeScript/JavaScript rules against Home Assistant",
   "license": "MIT",
   "type": "module",
@@ -28,7 +28,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@home-engine/sdk": "0.0.0",
+    "@home-engine/sdk": "1.0.0-alpha.1",
     "chokidar": "^5.0.0",
     "croner": "^10.0.1",
     "esbuild": "^0.27.7",
