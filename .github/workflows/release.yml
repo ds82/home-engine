@@ -4,9 +4,8 @@ name: Release image
 # and latest; pre-releases (vX.Y.Z-rc.1) only as their own version. Branch pushes that touch
 # the image build it as a dry run (both platforms, size budget), pushing nothing.
 #
-# The image goes to this Forgejo instance's registry unless the repository variable IMAGE
-# names another one (e.g. ghcr.io/home-engine/home-engine); the secret REGISTRY_TOKEN, else
-# PACKAGES_READ_WRITE, is used to log in.
+# The image goes to ghcr.io/<owner>/<repo> with the workflow's token, unless the repository
+# variable IMAGE names another one; then the secret REGISTRY_TOKEN is used to log in.
 
 on:
   push:
@@ -17,30 +16,19 @@ on:
     paths:
       - "docker/**"
       - "scripts/build-image.sh"
-      - ".forgejo/workflows/release.yml"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   image:
-    runs-on: docker
-    container:
-      image: docker:27-cli
-    services:
-      dind:
-        image: docker:27-dind
-        env:
-          DOCKER_TLS_CERTDIR: ""
-        options: --privileged
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        run: |
-          apk add --no-cache git jq
-          SERVER=$(echo "${{ github.server_url }}" | sed 's|https\?://||')
-          git clone --depth 1 --branch "${{ github.ref_name }}" \
-            "https://x-token:${{ secrets.GITHUB_TOKEN }}@$SERVER/${{ github.repository }}.git" .
-
-      - name: Wait for Docker daemon
-        run: until docker info >/dev/null 2>&1; do sleep 1; done
+        uses: actions/checkout@v5
 
       - name: Dry run (both platforms, size budget)
         if: github.ref_type != 'tag'
@@ -50,9 +38,8 @@ jobs:
         if: github.ref_type == 'tag'
         id: meta
         run: |
-          SERVER=$(echo "${{ github.server_url }}" | sed 's|^https\?://||')
           IMAGE="${{ vars.IMAGE }}"
-          [ -n "$IMAGE" ] || IMAGE="$SERVER/${{ github.repository }}"
+          [ -n "$IMAGE" ] || IMAGE="ghcr.io/${{ github.repository }}"
           IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
@@ -71,9 +58,12 @@ jobs:
 
       - name: Log in to registry
         if: github.ref_type == 'tag'
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TOKEN="${{ secrets.REGISTRY_TOKEN }}"
-          [ -n "$TOKEN" ] || TOKEN="${{ secrets.PACKAGES_READ_WRITE }}"
+          TOKEN="$REGISTRY_TOKEN"
+          [ -n "$TOKEN" ] || TOKEN="$GITHUB_TOKEN"
           echo "$TOKEN" | docker login "${{ steps.meta.outputs.registry }}" \
             --username "${{ github.actor }}" --password-stdin
 
