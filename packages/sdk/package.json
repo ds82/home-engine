@@ -3,6 +3,15 @@
   "version": "1.0.0-alpha.1",
   "description": "Types and rule API for home-engine rules",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds82/home-engine.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/ds82/home-engine#readme",
+  "bugs": {
+    "url": "https://github.com/ds82/home-engine/issues"
+  },
   "type": "module",
   "exports": {
     ".": {

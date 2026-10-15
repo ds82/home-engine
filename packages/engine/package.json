@@ -3,6 +3,15 @@
   "version": "1.0.0-alpha.1",
   "description": "Rule engine that runs TypeScript/JavaScript rules against Home Assistant",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds82/home-engine.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/ds82/home-engine#readme",
+  "bugs": {
+    "url": "https://github.com/ds82/home-engine/issues"
+  },
   "type": "module",
   "exports": {
     ".": {

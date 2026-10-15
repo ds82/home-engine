@@ -3,6 +3,15 @@
   "version": "1.0.0-alpha.1",
   "description": "Command-line entry point of home-engine: runs TypeScript/JavaScript rules against Home Assistant",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds82/home-engine.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/ds82/home-engine#readme",
+  "bugs": {
+    "url": "https://github.com/ds82/home-engine/issues"
+  },
   "type": "module",
   "bin": {
     "home-engine": "bin/home-engine.js"

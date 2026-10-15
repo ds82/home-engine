@@ -3,6 +3,15 @@
   "version": "1.0.0-alpha.1",
   "description": "Generates entity and service typings for home-engine rules from a live Home Assistant",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds82/home-engine.git",
+    "directory": "packages/typegen"
+  },
+  "homepage": "https://github.com/ds82/home-engine#readme",
+  "bugs": {
+    "url": "https://github.com/ds82/home-engine/issues"
+  },
   "type": "module",
   "exports": {
     ".": {

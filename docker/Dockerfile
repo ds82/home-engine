@@ -55,7 +55,7 @@ ARG REVISION=unknown
 LABEL org.opencontainers.image.title="home-engine" \
       org.opencontainers.image.description="Rule engine that runs TypeScript/JavaScript rules against Home Assistant" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/home-engine/home-engine" \
+      org.opencontainers.image.source="https://github.com/ds82/home-engine" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}"
 

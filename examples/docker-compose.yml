@@ -5,7 +5,7 @@
 # Then: docker compose up -d && docker compose logs -f
 services:
   home-engine:
-    image: ${HOME_ENGINE_IMAGE:-ghcr.io/home-engine/home-engine:latest}
+    image: ${HOME_ENGINE_IMAGE:-ghcr.io/ds82/home-engine:latest}
     restart: unless-stopped
     # Rules get up to 10 s to tear down on shutdown; Docker must not kill the engine first.
     stop_grace_period: 15s

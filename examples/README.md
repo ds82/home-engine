@@ -44,7 +44,7 @@ Edit a file in `rules/` and the engine reloads it within a second. `curl localho
 lists every rule with its status.
 
 To run another image, such as one you built yourself or a pinned version, set
-`HOME_ENGINE_IMAGE` in `.env` (default `ghcr.io/home-engine/home-engine:latest`):
+`HOME_ENGINE_IMAGE` in `.env` (default `ghcr.io/ds82/home-engine:latest`):
 
 ```sh
 HOME_ENGINE_IMAGE=home-engine:local
